@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useMediaQuery } from "@/hooks/use-mobile"
+import { useMobile } from "@/hooks/use-mobile"
 import SaaamIDE from "./saaam-ide"
 import SaaamTutorial from "./saaam-tutorial"
 import SaaamExamples from "./saaam-examples"
@@ -14,7 +14,7 @@ import { sampleSaaamCode } from "@/lib/sample-code"
 export default function SaaamApp() {
   const [activeTab, setActiveTab] = useState("ide")
   const [generatedCode, setGeneratedCode] = useState("")
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMobile()
   const [showLegendaryIDE, setShowLegendaryIDE] = useState(false)
 
   // Listen for messages from child iframes or components

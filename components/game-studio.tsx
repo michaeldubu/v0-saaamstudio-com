@@ -11,4 +11,3 @@ export default function GameStudio({ onCodeGenerated }: GameStudioProps) {
   // We're wrapping the imported implementation
   return <GameStudioImplementation onCodeGenerated={onCodeGenerated} />
 }
-

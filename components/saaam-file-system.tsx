@@ -1,191 +1,369 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useStudio } from "@/contexts/studio-context"
-import { FileText, FolderPlus, FilePlus, MoreVertical, Edit, Trash2, Copy, Download } from "lucide-react"
 
-export default function SaaamFileSystem() {
-  const { project, setActiveFile, getFileById, updateFile } = useStudio()
+interface FileSystemItem {
+  id: string
+  name: string
+  type: "file" | "folder"
+  content?: string
+  children?: FileSystemItem[]
+  parent?: string
+  expanded?: boolean
+}
 
-  const [newFileName, setNewFileName] = useState("")
-  const [newFileContent, setNewFileContent] = useState("")
-  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false)
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
-  const [fileToRename, setFileToRename] = useState<string | null>(null)
-  const [newName, setNewName] = useState("")
+interface SaaamFileSystemProps {
+  onFileSelect: (file: FileSystemItem) => void
+  onFileCreate: (file: FileSystemItem) => void
+  onFileDelete: (fileId: string) => void
+  onFileRename: (fileId: string, newName: string) => void
+  onFileUpdate: (fileId: string, content: string) => void
+}
 
-  // Create a new file
-  const createNewFile = () => {
-    if (!newFileName.trim()) return
+export default function SaaamFileSystem({
+  onFileSelect,
+  onFileCreate,
+  onFileDelete,
+  onFileRename,
+  onFileUpdate,
+}: SaaamFileSystemProps) {
+  const [fileSystem, setFileSystem] = useState<FileSystemItem[]>([
+    {
+      id: "root",
+      name: "Project",
+      type: "folder",
+      expanded: true,
+      children: [
+        {
+          id: "main.saaam",
+          name: "main.saaam",
+          type: "file",
+          content: `// My first SAAAM program
+SAAAM.registerCreate(create);
+SAAAM.registerStep(step);
+SAAAM.registerDraw(draw);
 
-    // In a real implementation, this would call an API to create a file
-    console.log(`Creating new file: ${newFileName}`)
+function create() {
+  console.log("Hello, World!");
+}
 
-    // Reset the form
-    setNewFileName("")
-    setNewFileContent("")
-    setIsNewFileDialogOpen(false)
+function step(deltaTime) {
+  // Game logic goes here
+}
+
+function draw(ctx) {
+  // Clear the screen
+  SAAAM.drawRectangle(0, 0, 800, 600, "#222222");
+  
+  // Draw text
+  SAAAM.drawText("Hello, SAAAM World!", 400, 300, "#FFFFFF");
+}`,
+          parent: "root",
+        },
+        {
+          id: "assets",
+          name: "assets",
+          type: "folder",
+          expanded: false,
+          parent: "root",
+          children: [
+            {
+              id: "sprites",
+              name: "sprites",
+              type: "folder",
+              expanded: false,
+              parent: "assets",
+              children: [
+                {
+                  id: "player.png",
+                  name: "player.png",
+                  type: "file",
+                  parent: "sprites",
+                },
+                {
+                  id: "enemy.png",
+                  name: "enemy.png",
+                  type: "file",
+                  parent: "sprites",
+                },
+              ],
+            },
+            {
+              id: "sounds",
+              name: "sounds",
+              type: "folder",
+              expanded: false,
+              parent: "assets",
+              children: [
+                {
+                  id: "jump.mp3",
+                  name: "jump.mp3",
+                  type: "file",
+                  parent: "sounds",
+                },
+                {
+                  id: "background.mp3",
+                  name: "background.mp3",
+                  type: "file",
+                  parent: "sounds",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "player.saaam",
+          name: "player.saaam",
+          type: "file",
+          content: `// Player controller
+const player = {
+  x: 400,
+  y: 300,
+  width: 50,
+  height: 50,
+  speed: 200,
+  color: "#4488FF"
+};
+
+function movePlayer(deltaTime) {
+  // Handle player input
+  if (SAAAM.keyboardCheck(SAAAM.vk.left)) {
+    player.x -= player.speed * deltaTime;
+  }
+  if (SAAAM.keyboardCheck(SAAAM.vk.right)) {
+    player.x += player.speed * deltaTime;
+  }
+  if (SAAAM.keyboardCheck(SAAAM.vk.up)) {
+    player.y -= player.speed * deltaTime;
+  }
+  if (SAAAM.keyboardCheck(SAAAM.vk.down)) {
+    player.y += player.speed * deltaTime;
+  }
+  
+  // Keep player within screen bounds
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.width > 800) player.x = 800 - player.width;
+  if (player.y < 0) player.y = 0;
+  if (player.y + player.height > 600) player.y = 600 - player.height;
+}
+
+function drawPlayer() {
+  SAAAM.drawRectangle(player.x, player.y, player.width, player.height, player.color);
+}`,
+          parent: "root",
+        },
+      ],
+    },
+  ])
+
+  const [selectedFile, setSelectedFile] = useState<string | null>("main.saaam")
+  const [newItemName, setNewItemName] = useState("")
+  const [newItemType, setNewItemType] = useState<"file" | "folder">("file")
+  const [newItemParent, setNewItemParent] = useState<string | null>(null)
+  const [isCreatingNewItem, setIsCreatingNewItem] = useState(false)
+  const [isRenamingItem, setIsRenamingItem] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+
+  // Toggle folder expansion
+  const toggleFolder = (folderId: string) => {
+    setFileSystem((prevFileSystem) => {
+      const updateItem = (items: FileSystemItem[]): FileSystemItem[] => {
+        return items.map((item) => {
+          if (item.id === folderId) {
+            return { ...item, expanded: !item.expanded }
+          } else if (item.children) {
+            return { ...item, children: updateItem(item.children) }
+          }
+          return item
+        })
+      }
+
+      return updateItem(prevFileSystem)
+    })
   }
 
-  // Rename a file
-  const renameFile = () => {
-    if (!fileToRename || !newName.trim()) return
-
-    // In a real implementation, this would call an API to rename the file
-    console.log(`Renaming file ${fileToRename} to ${newName}`)
-
-    // Reset the form
-    setFileToRename(null)
-    setNewName("")
-    setIsRenameDialogOpen(false)
+  // Select a file
+  const selectFile = (file: FileSystemItem) => {
+    setSelectedFile(file.id)
+    onFileSelect(file)
   }
 
-  // Delete a file
-  const deleteFile = (fileId: string) => {
-    if (!confirm("Are you sure you want to delete this file?")) return
-
-    // In a real implementation, this would call an API to delete the file
-    console.log(`Deleting file: ${fileId}`)
+  // Create a new file or folder
+  const createNewItem = () => {
+    setIsCreatingNewItem(true)
+    setNewItemParent(selectedFile)
   }
 
-  // Download a file
-  const downloadFile = (fileId: string) => {
-    const file = getFileById(fileId)
-    if (!file) return
+  const confirmNewItem = () => {
+    if (newItemName) {
+      const newFile: FileSystemItem = {
+        id: newItemName,
+        name: newItemName,
+        type: newItemType,
+        parent: newItemParent || "root",
+      }
 
-    const blob = new Blob([file.content], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = file.name
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+      setFileSystem((prevFileSystem) => {
+        const addItem = (items: FileSystemItem[]): FileSystemItem[] => {
+          return items.map((item) => {
+            if (item.id === newItemParent) {
+              const newItemToAdd = { ...item, children: [...(item.children || []), newFile] }
+              return newItemToAdd
+            } else if (item.children) {
+              return { ...item, children: addItem(item.children) }
+            }
+            return item
+          })
+        }
+
+        return addItem(prevFileSystem)
+      })
+
+      onFileCreate(newFile)
+      setNewItemName("")
+      setIsCreatingNewItem(false)
+    }
+  }
+
+  // Rename a file or folder
+  const renameItem = (fileId: string) => {
+    setIsRenamingItem(fileId)
+    setRenameValue(getFileById(fileId)?.name || "")
+  }
+
+  const confirmRenameItem = (fileId: string) => {
+    if (renameValue) {
+      setFileSystem((prevFileSystem) => {
+        const updateItem = (items: FileSystemItem[]): FileSystemItem[] => {
+          return items.map((item) => {
+            if (item.id === fileId) {
+              return { ...item, name: renameValue }
+            } else if (item.children) {
+              return { ...item, children: updateItem(item.children) }
+            }
+            return item
+          })
+        }
+
+        return updateItem(prevFileSystem)
+      })
+
+      onFileRename(fileId, renameValue)
+      setIsRenamingItem(null)
+      setRenameValue("")
+    }
+  }
+
+  // Delete a file or folder
+  const deleteItem = (fileId: string) => {
+    setFileSystem((prevFileSystem) => {
+      const removeItem = (items: FileSystemItem[]): FileSystemItem[] => {
+        return items.reduce((acc: FileSystemItem[], item) => {
+          if (item.id !== fileId) {
+            const newItem = item.children ? { ...item, children: removeItem(item.children) } : item
+            acc.push(newItem)
+          }
+          return acc
+        }, [])
+      }
+
+      return removeItem(prevFileSystem)
+    })
+
+    onFileDelete(fileId)
   }
 
   // Duplicate a file
-  const duplicateFile = (fileId: string) => {
-    const file = getFileById(fileId)
-    if (!file) return
-
-    // In a real implementation, this would call an API to duplicate the file
+  const duplicateItem = (fileId: string) => {
     console.log(`Duplicating file: ${fileId}`)
   }
 
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center p-3 border-b border-gray-700">
-        <h2 className="text-lg font-bold text-white">Files</h2>
-        <div className="flex gap-2">
-          <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                <FilePlus className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New File</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">File Name</label>
-                  <Input
-                    value={newFileName}
-                    onChange={(e) => setNewFileName(e.target.value)}
-                    placeholder="e.g., main.saaam"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Initial Content (optional)</label>
-                  <textarea
-                    value={newFileContent}
-                    onChange={(e) => setNewFileContent(e.target.value)}
-                    placeholder="// SAAAM code here"
-                    className="w-full h-32 p-2 border rounded-md bg-gray-800 text-white"
-                  />
-                </div>
-                <Button onClick={createNewFile}>Create File</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+  // Helper function to get a file by its ID
+  const getFileById = (fileId: string): FileSystemItem | undefined => {
+    let found: FileSystemItem | undefined
 
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-            <FolderPlus className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+    const search = (items: FileSystemItem[]): void => {
+      for (const item of items) {
+        if (item.id === fileId) {
+          found = item
+          return
+        }
+        if (item.children) {
+          search(item.children)
+        }
+      }
+    }
 
-      <div className="flex-1 overflow-auto p-2">
-        <div className="space-y-1">
-          {project.files.map((file) => (
-            <div
-              key={file.id}
-              className={`flex items-center justify-between p-2 rounded-md hover:bg-gray-800 cursor-pointer ${
-                project.activeFile === file.id ? "bg-gray-800" : ""
-              }`}
-              onClick={() => setActiveFile(file.id)}
-            >
-              <div className="flex items-center">
-                <FileText className="h-4 w-4 mr-2 text-blue-400" />
-                <span className="text-sm">{file.name}</span>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <MoreVertical className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setFileToRename(file.id)
-                      setNewName(file.name)
-                      setIsRenameDialogOpen(true)
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => duplicateFile(file.id)}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => downloadFile(file.id)}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-red-500">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+    search(fileSystem)
+    return found
+  }
+
+  // Render a file system item
+  const renderItem = (item: FileSystemItem) => {
+    const isSelected = selectedFile === item.id
+    const isRenaming = isRenamingItem === item.id
+
+    return (
+      <li key={item.id}>
+        {item.type === "folder" ? (
+          <>
+            <div className={`folder ${item.expanded ? "expanded" : ""}`} onClick={() => toggleFolder(item.id)}>
+              <span>{item.name}</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename File</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Name</label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
-            </div>
-            <Button onClick={renameFile}>Rename</Button>
+            {item.expanded && item.children && <ul>{item.children.map((child) => renderItem(child))}</ul>}
+          </>
+        ) : (
+          <div className={`file ${isSelected ? "selected" : ""}`} onClick={() => selectFile(item)}>
+            {isRenaming ? (
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => confirmRenameItem(item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    confirmRenameItem(item.id)
+                  }
+                }}
+              />
+            ) : (
+              <span>{item.name}</span>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </li>
+    )
+  }
+
+  return (
+    <div className="file-system">
+      <ul>{fileSystem.map((item) => renderItem(item))}</ul>
+
+      <button onClick={createNewItem}>Create New</button>
+
+      {isCreatingNewItem && (
+        <div className="new-item-form">
+          <input
+            type="text"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            placeholder="New item name"
+          />
+          <select value={newItemType} onChange={(e) => setNewItemType(e.target.value as "file" | "folder")}>
+            <option value="file">File</option>
+            <option value="folder">Folder</option>
+          </select>
+          <button onClick={confirmNewItem}>Confirm</button>
+        </div>
+      )}
+
+      {selectedFile && (
+        <div className="file-actions">
+          <button onClick={() => renameItem(selectedFile)}>Rename</button>
+          <button onClick={() => deleteItem(selectedFile)}>Delete</button>
+          <button onClick={() => duplicateItem(selectedFile)}>Duplicate</button>
+        </div>
+      )}
     </div>
   )
 }
-

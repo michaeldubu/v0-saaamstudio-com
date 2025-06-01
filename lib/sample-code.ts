@@ -1202,4 +1202,3 @@ function resetGame() {
   spawnObstacles();
 }
 `
-

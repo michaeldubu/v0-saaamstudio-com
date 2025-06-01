@@ -3,24 +3,25 @@
 import React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardFooter } from "@/components/ui/card"
 import {
+  Bot,
+  Code,
+  Sparkles,
   Loader2,
-  Bug,
-  RefreshCw,
+  Copy,
+  Download,
+  BoxIcon as Button,
+  MessageSquare,
+  ArrowRight,
   AlertTriangle,
   X,
-  Copy,
-  Code,
-  ArrowRight,
-  MessageSquare,
   FileText,
   Zap,
   Lightbulb,
-  Sparkles,
 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardFooter } from "@/components/ui/card"
+import { Bug, RefreshCw } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useStudio } from "@/contexts/studio-context"
@@ -31,10 +32,10 @@ import CopilotFileBrowser from "./copilot-file-browser"
 type MessageRole = "user" | "assistant" | "system"
 
 interface Message {
-  role: MessageRole
+  id: string
+  role: "user" | "assistant" | "system"
   content: string
   timestamp: Date
-  id: string
   codeBlocks?: CodeBlock[]
   fileReference?: {
     fileId: string
@@ -48,36 +49,44 @@ interface CodeBlock {
   id: string
 }
 
-export default function CopilotPanel() {
-  const { project, editorContent, getActiveFile } = useStudio()
+interface CopilotPanelProps {
+  initialCode?: string
+}
+
+export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
+  const { project, editorContent, getActiveFile, insertCodeAtCursor } = useStudio()
 
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<Message[]>([
     {
-      role: "system",
+      id: "welcome",
+      role: "assistant",
       content:
-        "Hello! I'm SAAAM Copilot. I can help you with your game development in the SAAAM Studio environment. I can analyze your code, suggest improvements, and help you implement new features. What would you like to work on today?",
+        "👋 Hi! I'm your SAAAM Copilot. I can help you write game code, explain concepts, or debug issues. What would you like to do today?",
       timestamp: new Date(),
-      id: "welcome-message",
     },
   ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<any>(null)
-  const [apiStatus, setApiStatus] = useState<"unknown" | "connected" | "error">("unknown")
+  const [apiStatus, setApiStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [apiError, setApiError] = useState<string | null>(null)
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [showDebugPanel, setShowDebugPanel] = useState(false)
   const [showCodePanel, setShowCodePanel] = useState(false)
   const [selectedCodeBlock, setSelectedCodeBlock] = useState<CodeBlock | null>(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [sidebarTab, setSidebarTab] = useState<"files" | "analysis">("analysis")
+  const [isLoading, setIsLoading] = useState(false)
+  const [codeSnippets, setCodeSnippets] = useState<Array<{ id: string; title: string; code: string }>>([])
+  const [selectedSnippet, setSelectedSnippet] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Test the API connection on component mount
   useEffect(() => {
-    testApiConnection()
+    checkApiConnection()
   }, [])
 
   // Scroll to bottom when messages change
@@ -146,7 +155,25 @@ export default function CopilotPanel() {
     }
   }
 
-  // Test the API connection
+  // Check if the OpenAI API is properly configured
+  const checkApiConnection = async () => {
+    try {
+      setApiStatus("loading")
+      const response = await fetch("/api/copilot-test")
+      const data = await response.json()
+
+      if (data.success) {
+        setApiStatus("success")
+      } else {
+        setApiStatus("error")
+        setApiError(data.error || "Unknown error")
+      }
+    } catch (error) {
+      setApiStatus("error")
+      setApiError(error instanceof Error ? error.message : "Failed to connect to API")
+    }
+  }
+
   async function testApiConnection() {
     try {
       setApiStatus("unknown")
@@ -177,10 +204,10 @@ export default function CopilotPanel() {
 
     // Add user message to conversation
     const userMessage: Message = {
+      id: `user-${Date.now()}`,
       role: "user",
       content: input,
       timestamp: new Date(),
-      id: `user-${Date.now()}`,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -248,10 +275,10 @@ export default function CopilotPanel() {
 
       // Add assistant message to conversation
       const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
         role: "assistant",
         content: responseText,
         timestamp: new Date(),
-        id: `assistant-${Date.now()}`,
         codeBlocks: codeBlocks.length > 0 ? codeBlocks : undefined,
       }
 
@@ -269,10 +296,10 @@ export default function CopilotPanel() {
 
       // Add error message to conversation
       const errorMessage: Message = {
+        id: `error-${Date.now()}`,
         role: "assistant",
         content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : String(error)}`,
         timestamp: new Date(),
-        id: `error-${Date.now()}`,
       }
 
       setMessages((prev) => [...prev, errorMessage])
@@ -281,12 +308,24 @@ export default function CopilotPanel() {
     }
   }
 
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return
+    await askCopilot() // Call the actual API function
+  }
+
   // Handle key press in textarea
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      askCopilot()
+      //askCopilot()
+      handleSendMessage()
     }
+  }
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
   }
 
   // Copy code to clipboard
@@ -302,14 +341,50 @@ export default function CopilotPanel() {
       })
   }
 
+  // Copy code snippet
+  const copyCodeSnippet = (code: string) => {
+    navigator.clipboard
+      .writeText(code)
+      .then(() => {
+        // Show a temporary success message
+        const tempMessage: Message = {
+          id: `system-${Date.now()}`,
+          role: "system",
+          content: "✅ Code copied to clipboard!",
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, tempMessage])
+
+        // Remove the message after 3 seconds
+        setTimeout(() => {
+          setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id))
+        }, 3000)
+      })
+      .catch((err) => {
+        console.error("Failed to copy code:", err)
+      })
+  }
+
+  // Download code snippet
+  const downloadCodeSnippet = (code: string, title: string) => {
+    const element = document.createElement("a")
+    const file = new Blob([code], { type: "text/plain" })
+    element.href = URL.createObjectURL(file)
+    element.download = `${title.toLowerCase().replace(/\s+/g, "_")}.saaam`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
   // Handle file selection from the file browser
   const handleFileSelect = (fileId: string, fileName: string) => {
     // Add a message about the selected file
     const fileMessage: Message = {
+      id: `file-${Date.now()}`,
       role: "user",
       content: `I'm working on the file "${fileName}". Can you help me understand and improve this code?`,
       timestamp: new Date(),
-      id: `file-${Date.now()}`,
       fileReference: {
         fileId,
         fileName,
@@ -328,6 +403,20 @@ export default function CopilotPanel() {
   const handleSuggestion = (suggestion: string) => {
     setInput(suggestion)
     inputRef.current?.focus()
+  }
+
+  // Clear chat history
+  const clearChat = () => {
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "Chat history cleared. How can I help you with your SAAAM game development?",
+        timestamp: new Date(),
+      },
+    ])
+    setCodeSnippets([])
+    setSelectedSnippet(null)
   }
 
   // Format the message content with code blocks highlighted
@@ -456,6 +545,13 @@ export default function CopilotPanel() {
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col h-full">
+        {/* API status banner */}
+        {apiStatus === "error" && (
+          <div className="bg-red-900 text-white p-2 text-sm">
+            <strong>API Error:</strong> {apiError || "Could not connect to AI service"}
+          </div>
+        )}
+
         <Card className="flex flex-col h-full border-slate-700 bg-gradient-to-b from-[#111] to-[#222] text-white">
           {/* Chat header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
@@ -601,13 +697,72 @@ export default function CopilotPanel() {
                         : "bg-gray-800 text-white",
                   )}
                 >
+                  {message.role === "assistant" && (
+                    <div className="flex items-center mb-1">
+                      <Bot size={16} className="mr-1 text-yellow-400" />
+                      <span className="text-xs text-yellow-400 font-semibold">SAAAM Copilot</span>
+                    </div>
+                  )}
                   {message.fileReference && (
                     <div className="mb-2 text-xs bg-blue-900/50 p-2 rounded flex items-center">
                       <FileText className="h-3 w-3 mr-1 text-blue-300" />
                       <span className="text-blue-300">File: {message.fileReference.fileName}</span>
                     </div>
                   )}
-                  {formatMessageContent(message)}
+                  <div className="whitespace-pre-wrap">
+                    {/* Render code blocks */}
+                    {message.content.includes("```") ? (
+                      message.content.split(/(```[a-zA-Z]*\n[\s\S]*?```)/g).map((part, index) => {
+                        if (part.startsWith("```")) {
+                          // Code block
+                          const match = part.match(/```([a-zA-Z]*)\n([\s\S]*?)```/)
+                          const language = match ? match[1] : "code"
+                          const code = match ? match[2] : part.replace(/```[a-zA-Z]*\n/, "").replace(/```$/, "")
+
+                          return (
+                            <div key={index} className="my-2 relative">
+                              <div className="bg-gray-800 rounded-md p-3 overflow-x-auto">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs text-gray-400">{language || "code"}</span>
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedCodeBlock({ id: `code-${index}`, language, code })
+                                        setShowCodePanel(true)
+                                      }}
+                                      className="text-xs bg-blue-900 hover:bg-blue-800 text-blue-100 px-2 py-1 rounded"
+                                    >
+                                      <Code className="h-3 w-3 inline mr-1" />
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => copyToClipboard(code)}
+                                      className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+                                    >
+                                      <Copy className="h-3 w-3 inline mr-1" />
+                                      Copy
+                                    </button>
+                                  </div>
+                                </div>
+                                <pre className="text-sm overflow-x-auto">
+                                  <code>{code}</code>
+                                </pre>
+                              </div>
+                            </div>
+                          )
+                        } else {
+                          // Regular text
+                          return (
+                            <p key={index} className="whitespace-pre-wrap">
+                              {part}
+                            </p>
+                          )
+                        }
+                      })
+                    ) : (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-400 mt-1 text-right">{message.timestamp.toLocaleTimeString()}</div>
                 </div>
               </div>
@@ -623,17 +778,18 @@ export default function CopilotPanel() {
                   ref={inputRef}
                   placeholder="Ask about your code, game mechanics, or how to implement features..."
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyPress}
                   className="bg-black text-white border border-slate-600 pr-10 min-h-[80px]"
                   rows={3}
+                  disabled={isLoading || apiStatus === "error"}
                 />
                 <Button
                   className="absolute bottom-2 right-2 h-8 w-8 p-0"
-                  onClick={askCopilot}
-                  disabled={loading || !input.trim() || apiStatus === "error"}
+                  onClick={handleSendMessage}
+                  disabled={!input.trim() || isLoading || apiStatus === "error"}
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 </Button>
               </div>
 
@@ -696,14 +852,112 @@ export default function CopilotPanel() {
           <div className="p-4 border-t border-slate-700">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Language: {selectedCodeBlock.language || "javascript"}</span>
-              <Button variant="default" size="sm" className="text-xs">
+              <Button
+                variant="default"
+                size="sm"
+                className="text-xs"
+                onClick={() => insertCodeAtCursor(selectedCodeBlock!.code)}
+              >
                 Insert into Editor
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Code snippets sidebar */}
+      {codeSnippets.length > 0 && (
+        <div className="w-64 border-l border-gray-700 overflow-y-auto">
+          <div className="p-3 border-b border-gray-700">
+            <h3 className="font-semibold">Code Snippets</h3>
+          </div>
+
+          <div className="p-2">
+            {codeSnippets.map((snippet) => (
+              <div
+                key={snippet.id}
+                className={`p-2 mb-2 rounded cursor-pointer ${
+                  selectedSnippet === snippet.id ? "bg-blue-900" : "bg-gray-800 hover:bg-gray-700"
+                }`}
+                onClick={() => setSelectedSnippet(snippet.id)}
+              >
+                <div className="text-sm font-medium">{snippet.title}</div>
+                <div className="text-xs text-gray-400 mt-1">{snippet.code.split("\n").length} lines</div>
+              </div>
+            ))}
+          </div>
+
+          {selectedSnippet && (
+            <div className="p-3 border-t border-gray-700">
+              <div className="flex justify-between mb-2">
+                <h3 className="font-semibold">Selected Snippet</h3>
+                <div className="flex space-x-1">
+                  <button
+                    className="p-1 hover:bg-gray-700 rounded"
+                    onClick={() => {
+                      const snippet = codeSnippets.find((s) => s.id === selectedSnippet)
+                      if (snippet) {
+                        copyCodeSnippet(snippet.code)
+                      }
+                    }}
+                    title="Copy code"
+                  >
+                    <Copy size={14} />
+                  </button>
+                  <button
+                    className="p-1 hover:bg-gray-700 rounded"
+                    onClick={() => {
+                      const snippet = codeSnippets.find((s) => s.id === selectedSnippet)
+                      if (snippet) {
+                        downloadCodeSnippet(snippet.code, snippet.title)
+                      }
+                    }}
+                    title="Download code"
+                  >
+                    <Download size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-gray-900 p-2 rounded text-xs font-mono overflow-x-auto max-h-64">
+                {codeSnippets
+                  .find((s) => s.id === selectedSnippet)
+                  ?.code.split("\n")
+                  .map((line, i) => (
+                    <div key={i} className="whitespace-pre">
+                      {line}
+                    </div>
+                  ))}
+              </div>
+
+              <Button
+                className="w-full mt-2"
+                size="sm"
+                onClick={() => {
+                  const snippet = codeSnippets.find((s) => s.id === selectedSnippet)
+                  if (snippet) {
+                    // In a real implementation, this would use the snippet code
+                    // For now, we'll just log it
+                    console.log("Using snippet:", snippet.code)
+
+                    // Show a message
+                    const tempMessage: Message = {
+                      id: `system-${Date.now()}`,
+                      role: "system",
+                      content: `✅ Code snippet "${snippet.title}" applied to editor!`,
+                      timestamp: new Date(),
+                    }
+
+                    setMessages((prev) => [...prev, tempMessage])
+                  }
+                }}
+              >
+                Use This Code
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
-

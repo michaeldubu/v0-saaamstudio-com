@@ -232,4 +232,3 @@ export class SaaamInterpreter {
     return this.gameRunning
   }
 }
-

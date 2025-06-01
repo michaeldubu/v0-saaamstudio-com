@@ -151,6 +151,21 @@ export class SaaamRuntime {
       getMousePosition: () => {
         return { ...this.state.mousePosition }
       },
+      mousePressed: () => {
+        return !!this.state.mouseButtons[0] // Left mouse button
+      },
+      mouseX: () => {
+        return this.state.mousePosition.x
+      },
+      mouseY: () => {
+        return this.state.mousePosition.y
+      },
+      keyboardCheckPressed: (keyCode: number) => {
+        // This requires tracking previous key state, which is not in current runtime.
+        // For simplicity, we'll simulate a "pressed" state by checking if it's currently down.
+        // A more robust solution would involve a `prevKeys` state.
+        return !!this.state.keys[keyCode] // Simple check for now
+      },
 
       // Utility functions
       random: (min: number, max: number) => {
@@ -551,4 +566,3 @@ export class SaaamRuntime {
     return this.state.fps || 0
   }
 }
-

@@ -1239,4 +1239,3 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
 }
 
 export default SaaamIDE
-

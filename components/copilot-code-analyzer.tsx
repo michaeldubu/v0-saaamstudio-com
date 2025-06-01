@@ -314,4 +314,3 @@ export default function CopilotCodeAnalyzer({ onSuggest }: CopilotCodeAnalyzerPr
     </Card>
   )
 }
-

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useStudio } from "@/contexts/studio-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, FileText, Image, Music, FolderOpen, ChevronRight, ChevronDown } from "lucide-react"
+import { Search, FileText, ImageIcon, Music, FolderOpen, ChevronRight, ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 interface CopilotFileBrowserProps {
@@ -59,7 +59,7 @@ export default function CopilotFileBrowser({ onFileSelect }: CopilotFileBrowserP
       case "script":
         return <FileText className="h-4 w-4 text-blue-400" />
       case "sprite":
-        return <Image className="h-4 w-4 text-green-400" />
+        return <ImageIcon className="h-4 w-4 text-green-400" />
       case "sound":
         return <Music className="h-4 w-4 text-purple-400" />
       default:
@@ -158,4 +158,3 @@ export default function CopilotFileBrowser({ onFileSelect }: CopilotFileBrowserP
     </Card>
   )
 }
-

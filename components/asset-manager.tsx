@@ -579,4 +579,3 @@ export default function AssetManager({ assetType, onClose, onSelectAsset, theme 
     </div>
   )
 }
-

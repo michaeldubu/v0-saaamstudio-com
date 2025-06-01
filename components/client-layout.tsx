@@ -10,4 +10,3 @@ export default function ClientLayout({
   // Any client-side functionality can go here
   return <div className="h-full">{children}</div>
 }
-

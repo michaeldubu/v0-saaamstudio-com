@@ -421,4 +421,3 @@ function step(deltaTime) {
     </div>
   )
 }
-

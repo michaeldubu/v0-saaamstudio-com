@@ -104,4 +104,3 @@ ${transitions.map((t) => `      { from: "${t.from}", to: "${t.to}", condition: (
     </div>
   )
 }
-

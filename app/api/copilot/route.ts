@@ -58,7 +58,7 @@ You understand:
 - Audio, rendering, collision, and scripting tools
 
 Answer with code, examples, or explanations as needed.
-When providing code, use markdown code blocks with the appropriate language tag.
+When providing code, use .saaam code blocks with the appropriate language tag.
 For example: \`\`\`javascript
 // Your code here
 \`\`\`

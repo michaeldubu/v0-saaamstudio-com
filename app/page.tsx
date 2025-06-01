@@ -1,14 +1,13 @@
-"use client"
-
+import { StudioProvider } from "@/contexts/studio-context"
 import ClientLayout from "@/components/client-layout"
 import SaaamApp from "@/components/saaam-app"
 
 export default function Home() {
   return (
-    <ClientLayout>
-      <div className="w-full h-screen flex flex-col">
+    <StudioProvider>
+      <ClientLayout>
         <SaaamApp />
-      </div>
-    </ClientLayout>
+      </ClientLayout>
+    </StudioProvider>
   )
 }

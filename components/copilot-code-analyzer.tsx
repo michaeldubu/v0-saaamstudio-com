@@ -283,28 +283,28 @@ export default function CopilotCodeAnalyzer({ onSuggest }: CopilotCodeAnalyzerPr
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs bg-gray-800 border-gray-700 text-gray-300"
                 onClick={() => handleSuggest("Can you optimize my code?")}
               >
-                <Zap className="h-3 w-3 mr-1" />
+                <Zap className="h-3 w-3 mr-1 text-yellow-400" />
                 Optimize
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs bg-gray-800 border-gray-700 text-gray-300"
                 onClick={() => handleSuggest("Can you explain how this code works?")}
               >
-                <Code className="h-3 w-3 mr-1" />
+                <Code className="h-3 w-3 mr-1 text-blue-400" />
                 Explain
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs bg-gray-800 border-gray-700 text-gray-300"
                 onClick={() => handleSuggest("Can you suggest improvements to this code?")}
               >
-                <ArrowRight className="h-3 w-3 mr-1" />
+                <ArrowRight className="h-3 w-3 mr-1 text-green-400" />
                 Improve
               </Button>
             </div>

@@ -7,7 +7,6 @@ import SaaamIDE from "./saaam-ide"
 import SaaamTutorial from "./saaam-tutorial"
 import SaaamExamples from "./saaam-examples"
 import GameStudio from "./game-studio"
-import LegendarySaaamIDE from "./legendary-saaam-ide"
 import ECSDemo from "./ecs-demo"
 import { sampleSaaamCode } from "@/lib/sample-code"
 
@@ -15,7 +14,6 @@ export default function SaaamApp() {
   const [activeTab, setActiveTab] = useState("ide")
   const [generatedCode, setGeneratedCode] = useState("")
   const isMobile = useMobile()
-  const [showLegendaryIDE, setShowLegendaryIDE] = useState(false)
 
   // Listen for messages from child iframes or components
   useEffect(() => {
@@ -43,31 +41,31 @@ export default function SaaamApp() {
           <TabsList className="bg-gray-800 p-0 h-auto">
             <TabsTrigger
               value="ide"
-              className="px-4 py-3 data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none"
+              className="px-4 py-3 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none hover:text-white hover:bg-gray-700"
             >
               Code Editor
             </TabsTrigger>
             <TabsTrigger
               value="studio"
-              className="px-4 py-3 data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none"
+              className="px-4 py-3 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none hover:text-white hover:bg-gray-700"
             >
               Game Studio
             </TabsTrigger>
             <TabsTrigger
               value="examples"
-              className="px-4 py-3 data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none"
+              className="px-4 py-3 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none hover:text-white hover:bg-gray-700"
             >
               Examples
             </TabsTrigger>
             <TabsTrigger
               value="tutorial"
-              className="px-4 py-3 data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none"
+              className="px-4 py-3 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none hover:text-white hover:bg-gray-700"
             >
               Tutorial
             </TabsTrigger>
             <TabsTrigger
               value="ecs"
-              className="px-4 py-3 data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none"
+              className="px-4 py-3 text-gray-300 data-[state=active]:text-white data-[state=active]:bg-gray-900 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 data-[state=active]:shadow-none hover:text-white hover:bg-gray-700"
             >
               ECS Demo
             </TabsTrigger>
@@ -75,27 +73,7 @@ export default function SaaamApp() {
         </div>
 
         <TabsContent value="ide" className="flex-1 p-0 m-0">
-          {showLegendaryIDE ? (
-            <div className="relative w-full h-full">
-              <LegendarySaaamIDE />
-              <button
-                className="absolute top-4 right-4 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-sm"
-                onClick={() => setShowLegendaryIDE(false)}
-              >
-                Switch to Standard IDE
-              </button>
-            </div>
-          ) : (
-            <div className="relative w-full h-full">
-              <SaaamIDE initialCode={generatedCode || sampleSaaamCode} isMobile={isMobile} />
-              <button
-                className="absolute top-4 right-4 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-sm"
-                onClick={() => setShowLegendaryIDE(true)}
-              >
-                Switch to Legendary IDE
-              </button>
-            </div>
-          )}
+          <SaaamIDE initialCode={generatedCode || sampleSaaamCode} isMobile={isMobile} />
         </TabsContent>
 
         <TabsContent value="studio" className="flex-1 p-0 m-0">

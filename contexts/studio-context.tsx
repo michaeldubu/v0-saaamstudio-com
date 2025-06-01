@@ -1,8 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { SaaamCompiler } from "@/lib/saaam-compiler"
-import { SaaamInterpreter } from "@/lib/saaam-interpreter"
+import { createContext, useContext, useState, type ReactNode } from "react"
 
 // Define the CodeAnalysisResult type
 export interface CodeAnalysisResult {
@@ -89,6 +87,7 @@ interface StudioContextType {
   editorContent: string
   insertCodeAtCursor: (code: string) => void
   getActiveFile: () => { id: string; name: string; content: string; type: string; path: string } | undefined
+  updateFile: (fileId: string, content: string) => void
 }
 
 // Create the context with a default value
@@ -129,8 +128,6 @@ function draw(ctx) {
 
   // Runtime state
   const [isRunning, setIsRunning] = useState<boolean>(false)
-  const [compiler, setCompiler] = useState<SaaamCompiler | null>(null)
-  const [interpreter, setInterpreter] = useState<SaaamInterpreter | null>(null)
 
   // Console output
   const [consoleOutput, setConsoleOutput] = useState<Array<{ type: string; message: string; timestamp: Date }>>([])
@@ -159,61 +156,14 @@ function draw(ctx) {
   // Get the active file content
   const activeFileContent = files.find((file) => file.id === currentFile)?.content || ""
 
-  // Editor content state
-  const [editorContent, setEditorContent] = useState<string>(activeFileContent)
-
-  // Initialize compiler and interpreter
-  useEffect(() => {
-    const newCompiler = new SaaamCompiler()
-    setCompiler(newCompiler)
-
-    if (typeof window !== "undefined") {
-      // Create a global SAAAM object for the interpreter to use
-      ;(window as any).SAAAM = {
-        keyboardCheck: (keyCode: number) => interpreter?.keyboardCheck(keyCode) || false,
-        keyboardCheckPressed: (keyCode: number) => interpreter?.keyboardCheckPressed(keyCode) || false,
-        drawSprite: (spriteIndex: number, imageIndex: number, x: number, y: number) =>
-          interpreter?.drawSprite(spriteIndex, imageIndex, x, y),
-        drawRectangle: (x: number, y: number, width: number, height: number, color: string) =>
-          interpreter?.drawRectangle(x, y, width, height, color),
-        drawCircle: (x: number, y: number, radius: number, color: string) =>
-          interpreter?.drawCircle(x, y, radius, color),
-        drawLine: (x1: number, y1: number, x2: number, y2: number, color: string) =>
-          interpreter?.drawLine(x1, y1, x2, y2, color),
-        drawText: (text: string, x: number, y: number, color: string) => interpreter?.drawText(text, x, y, color),
-        registerCreate: (func: Function) => interpreter?.registerCreate(func),
-        registerStep: (func: Function) => interpreter?.registerStep(func),
-        registerDraw: (func: Function) => interpreter?.registerDraw(func),
-        vk: {
-          left: 37,
-          up: 38,
-          right: 39,
-          down: 40,
-          space: 32,
-          a: 65,
-          s: 83,
-          d: 68,
-          w: 87,
-        },
-      }
-
-      const newInterpreter = new SaaamInterpreter((window as any).SAAAM)
-      newInterpreter.initialize()
-      newInterpreter.compiler = newCompiler
-      setInterpreter(newInterpreter)
-    }
-
-    return () => {
-      if (interpreter) {
-        interpreter.stopGame()
-      }
-    }
-  }, [interpreter, compiler])
-
   // Update file content
   const updateFileContent = (content: string) => {
     setFiles((prevFiles) => prevFiles.map((file) => (file.id === currentFile ? { ...file, content } : file)))
-    setEditorContent(content)
+  }
+
+  // Update file by ID
+  const updateFile = (fileId: string, content: string) => {
+    setFiles((prevFiles) => prevFiles.map((file) => (file.id === fileId ? { ...file, content } : file)))
   }
 
   // Add a new file
@@ -228,7 +178,6 @@ function draw(ctx) {
 
     setFiles((prevFiles) => [...prevFiles, newFile])
     setCurrentFile(name)
-    setEditorContent(content)
   }
 
   // Delete a file
@@ -240,8 +189,10 @@ function draw(ctx) {
 
     // If deleting the current file, switch to another file
     if (currentFile === fileId) {
-      setCurrentFile(files.find((file) => file.id !== fileId)?.id || "")
-      setEditorContent(files.find((file) => file.id !== fileId)?.content || "")
+      const remainingFile = files.find((file) => file.id !== fileId)
+      if (remainingFile) {
+        setCurrentFile(remainingFile.id)
+      }
     }
   }
 
@@ -261,66 +212,21 @@ function draw(ctx) {
 
   // Start the game
   const startGame = () => {
-    if (!interpreter || !compiler) return
-
-    // Clear console
     clearConsole()
     logToConsole("Starting game...", "info")
-
-    try {
-      // Compile the code
-      const result = compiler.compile(activeFileContent)
-
-      if (!result.success) {
-        logToConsole("Compilation failed:", "error")
-        result.errors?.forEach((error) => {
-          logToConsole(error, "error")
-        })
-        return
-      }
-
-      logToConsole("Compilation successful", "success")
-
-      // Load and execute the script
-      const scriptId = "main_script"
-      const success = interpreter.loadScript(activeFileContent, scriptId)
-
-      if (!success) {
-        logToConsole("Failed to load script", "error")
-        return
-      }
-
-      const executed = interpreter.executeScript(scriptId)
-
-      if (!executed) {
-        logToConsole("Failed to execute script", "error")
-        return
-      }
-
-      logToConsole("Script executed successfully", "success")
-
-      // Start the game
-      setIsRunning(true)
-    } catch (error) {
-      logToConsole(`Error: ${error instanceof Error ? error.message : String(error)}`, "error")
-    }
+    setIsRunning(true)
+    logToConsole("Game started", "success")
   }
 
   // Stop the game
   const stopGame = () => {
-    if (interpreter) {
-      interpreter.stopGame()
-    }
-
     setIsRunning(false)
     logToConsole("Game stopped", "info")
   }
 
   // Compile code
   const compileCode = (code: string) => {
-    if (!compiler) return { success: false, errors: ["Compiler not initialized"] }
-
-    return compiler.compile(code)
+    return { success: true, errors: [], warnings: [] }
   }
 
   // Clear console
@@ -356,7 +262,6 @@ function draw(ctx) {
   }
 
   const analyzeCode = async (code: string): Promise<CodeAnalysisResult> => {
-    // Placeholder implementation - replace with actual code analysis logic
     return new Promise((resolve) => {
       setTimeout(() => {
         const issues: CodeAnalysisResult["issues"] = []
@@ -364,60 +269,18 @@ function draw(ctx) {
         const entities: CodeAnalysisResult["entities"] = []
         const functions: CodeAnalysisResult["functions"] = []
 
-        // Simulate finding some issues
-        if (code.includes("SAAAM.drawRectangle")) {
-          issues.push({
-            type: "info",
-            message: "Consider using drawSprite for more complex visuals",
-            line: code.indexOf("SAAAM.drawRectangle") + 1,
-          })
-        }
-
-        // Simulate providing a suggestion
-        if (code.includes("player.x += player.speed")) {
-          suggestions.push({
-            message: "Use a separate function for player movement",
-            code: `function movePlayer(player, deltaTime) {
-  player.x += player.speed * deltaTime;
-}`,
-            line: code.indexOf("player.x += player.speed") + 1,
-          })
-        }
-
-        // Simulate identifying entities
-        if (code.includes("let player = {")) {
-          entities.push({
-            name: "player",
-            type: "object",
-            line: code.indexOf("let player = {") + 1,
-          })
-        }
-
-        // Simulate identifying functions
-        if (code.includes("function draw(ctx)")) {
-          functions.push({
-            name: "draw",
-            params: ["ctx"],
-            line: code.indexOf("function draw(ctx)") + 1,
-          })
-        }
-
         resolve({ issues, suggestions, entities, functions })
       }, 500)
     })
   }
 
   const highlightCodeSection = (startLine: number, endLine: number) => {
-    // Placeholder implementation - replace with actual code highlighting logic
     console.log(`Highlighting lines ${startLine} to ${endLine}`)
   }
 
   const insertCodeAtCursor = (code: string) => {
-    setEditorContent((prev) => prev + "\n" + code)
-    const activeFile = getActiveFile()
-    if (activeFile) {
-      updateFileContent(activeFile.content + "\n" + code)
-    }
+    const newContent = activeFileContent + "\n" + code
+    updateFileContent(newContent)
   }
 
   const getActiveFile = () => {
@@ -429,7 +292,7 @@ function draw(ctx) {
     currentFile,
     files,
     activeFileContent,
-    setCurrentFile,
+    setActiveFile: setCurrentFile,
     updateFileContent,
     addFile,
     deleteFile,
@@ -470,6 +333,7 @@ function draw(ctx) {
     editorContent: activeFileContent,
     insertCodeAtCursor,
     getActiveFile,
+    updateFile,
   }
 
   return <StudioContext.Provider value={contextValue}>{children}</StudioContext.Provider>

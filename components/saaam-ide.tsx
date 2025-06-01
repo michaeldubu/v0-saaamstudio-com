@@ -1,7 +1,21 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Play, Square, Bug, BarChart, RefreshCw, Sun, Moon, Users, Menu, X, Code, BotIcon as Robot } from "lucide-react"
+import {
+  Play,
+  Square,
+  Bug,
+  BarChart,
+  RefreshCw,
+  Sun,
+  Moon,
+  Users,
+  Menu,
+  X,
+  Code,
+  BotIcon as Robot,
+  BookOpen,
+} from "lucide-react"
 import { SaaamCompiler } from "@/lib/saaam-compiler"
 import { SaaamInterpreter } from "@/lib/saaam-interpreter"
 import { sampleSaaamCode } from "@/lib/sample-code"
@@ -11,8 +25,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import CopilotPanel from "./copilot-panel"
 import AssetManager from "./asset-manager"
 
+// Import the new systems
+import { dragAndDropIntegration } from "@/lib/drag-and-drop-integration"
+import { aiSystem } from "@/lib/ai-system"
+
 // Main IDE component
-const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: boolean }) => {
+const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: boolean }) => {
   const [code, setCode] = useState(initialCode || sampleSaaamCode)
   const [activeTab, setActiveTab] = useState("editor")
   const [output, setOutput] = useState("")
@@ -20,6 +38,11 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
   const [consoleOutput, setConsoleOutput] = useState<Array<{ type: string; message: string }>>([])
   const [visualMode, setVisualMode] = useState("game")
   const [showCoroutineVisualizer, setShowCoroutineVisualizer] = useState(false)
+
+  // AI System state
+  const [aiAnalysis, setAiAnalysis] = useState(null)
+  const [aiSuggestions, setAiSuggestions] = useState([])
+  const [aiEnabled, setAiEnabled] = useState(true)
 
   // New state for enhanced features
   const [debugMode, setDebugMode] = useState(false)
@@ -29,7 +52,6 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
   const [profilerData, setProfilerData] = useState<any>(null)
   const [showProfiler, setShowProfiler] = useState(false)
   const [aiSuggestionActive, setAiSuggestionActive] = useState(false)
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([])
   const [coroutineState, setCoroutineState] = useState<any>(null)
   const [executionTime, setExecutionTime] = useState(0)
   const [memoryUsage, setMemoryUsage] = useState(0)
@@ -68,8 +90,46 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
   const [currentAssetType, setCurrentAssetType] = useState<"sprite" | "sound" | "room">("sprite")
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const editorRef = useRef<HTMLTextAreaElement>(null)
   const compilerRef = useRef<SaaamCompiler | null>(null)
   const interpreterRef = useRef<SaaamInterpreter | null>(null)
+
+  // Initialize systems
+  useEffect(() => {
+    // Initialize drag and drop system
+    if (typeof window !== "undefined") {
+      dragAndDropIntegration.initialize({
+        addFile: (name, content, type) => {
+          setFiles((prev) => [...prev, { name, content }])
+          addMessage(`File ${name} added via drag and drop`, "success")
+        },
+        insertCodeAtCursor: (codeToInsert) => {
+          if (editorRef.current) {
+            const textarea = editorRef.current
+            const start = textarea.selectionStart
+            const end = textarea.selectionEnd
+            const newCode = code.substring(0, start) + codeToInsert + code.substring(end)
+            setCode(newCode)
+            updateFileContent(newCode)
+          }
+        },
+        updateFileContent: (content) => {
+          setCode(content)
+          updateFileContent(content)
+        },
+      })
+
+      // Setup drag and drop for editor
+      if (editorRef.current) {
+        window.SAAAM?.dragDrop?.setupCodeEditorDropZone(editorRef.current)
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount
+      dragAndDropIntegration.destroy()
+    }
+  }, [])
 
   // Initialize compiler and interpreter
   useEffect(() => {
@@ -104,6 +164,8 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
           d: 68,
           w: 87,
         },
+        // Add drag and drop functions
+        dragDrop: window.SAAAM?.dragDrop || {},
       }
 
       interpreterRef.current = new SaaamInterpreter((window as any).SAAAM)
@@ -118,6 +180,31 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
     }
   }, [])
 
+  // AI Analysis effect
+  useEffect(() => {
+    if (aiEnabled && code) {
+      const analyzeCodeWithAI = async () => {
+        try {
+          const analysis = await aiSystem.analyzeCode(code, currentFile)
+          setAiAnalysis(analysis)
+          setAiSuggestions(analysis.suggestions || [])
+
+          // Emit code change event for AI system
+          document.dispatchEvent(
+            new CustomEvent("saaam-code-changed", {
+              detail: { code, file: currentFile },
+            }),
+          )
+        } catch (error) {
+          console.error("AI analysis failed:", error)
+        }
+      }
+
+      const debounceTimer = setTimeout(analyzeCodeWithAI, 1000)
+      return () => clearTimeout(debounceTimer)
+    }
+  }, [code, currentFile, aiEnabled])
+
   // Add this useEffect to update the code when initialCode changes
   useEffect(() => {
     if (initialCode) {
@@ -130,8 +217,6 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
       setConsoleOutput((prev) => [...prev, { type: "info", message: "> Example code loaded successfully" }])
     }
   }, [initialCode])
-
-  // Add a useEffect to ensure the canvas is properly initialized when the component mounts
 
   // Add this useEffect after the existing useEffect that initializes the compiler and interpreter
   useEffect(() => {
@@ -343,6 +428,45 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
     setConsoleOutput((prev) => [...prev, { type, message: text }])
   }
 
+  // AI suggestion handlers
+  const handleAISuggestionAccept = (suggestion) => {
+    // Apply the suggestion
+    if (suggestion.code) {
+      const newCode = code + "\n" + suggestion.code
+      setCode(newCode)
+      updateFileContent(newCode)
+    }
+
+    // Learn from user action
+    document.dispatchEvent(
+      new CustomEvent("saaam-user-action", {
+        detail: {
+          type: "suggestion-accepted",
+          suggestion,
+          context: { file: currentFile, code },
+        },
+      }),
+    )
+
+    addMessage(`Applied AI suggestion: ${suggestion.message}`, "success")
+  }
+
+  const handleAISuggestionReject = (suggestion) => {
+    // Learn from user action
+    document.dispatchEvent(
+      new CustomEvent("saaam-user-action", {
+        detail: {
+          type: "suggestion-rejected",
+          suggestion,
+          context: { file: currentFile, code },
+        },
+      }),
+    )
+
+    // Remove suggestion from list
+    setAiSuggestions((prev) => prev.filter((s) => s !== suggestion))
+  }
+
   // Simple code validation
   const validateCode = (code: string) => {
     const errors: string[] = []
@@ -381,7 +505,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
 
   return (
     <div
-      className={`flex flex-col w-full h-full ${theme === "dark" ? "bg-gray-900" : "bg-gray-100"} ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+      className={`flex flex-col w-full h-screen ${theme === "dark" ? "bg-gray-900" : "bg-gray-100"} ${theme === "dark" ? "text-white" : "text-gray-900"}`}
     >
       {/* Header */}
       <div
@@ -395,6 +519,11 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
           )}
           <span className="font-bold text-lg md:text-xl text-yellow-400">SAAAM IDE</span>
           <span className="px-2 py-1 text-xs bg-gray-700 rounded hidden sm:inline-block">v1.0</span>
+          {aiEnabled && aiAnalysis && (
+            <span className="px-2 py-1 text-xs bg-purple-600 rounded">
+              AI: {Math.round(aiAnalysis.confidence * 100)}%
+            </span>
+          )}
         </div>
         <div className="flex space-x-1 md:space-x-2">
           <TooltipProvider>
@@ -445,7 +574,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
                   variant="outline"
                   size="sm"
                   onClick={() => window.parent.postMessage({ type: "switchTab", tab: "examples" }, "*")}
-                  className="flex items-center bg-green-600 hover:bg-green-700"
+                  className="flex items-center bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Code size={14} /> <span className="hidden sm:inline ml-1">Examples</span>
                 </Button>
@@ -461,7 +590,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
                   variant="outline"
                   size="sm"
                   onClick={() => setActiveTab("copilot")}
-                  className={`flex items-center ${activeTab === "copilot" ? "bg-purple-600 hover:bg-purple-700" : ""}`}
+                  className={`flex items-center ${activeTab === "copilot" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
                 >
                   <Robot size={14} /> <span className="hidden sm:inline ml-1">Copilot</span>
                 </Button>
@@ -488,7 +617,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
                   variant="outline"
                   size="sm"
                   onClick={() => setShowProfiler(!showProfiler)}
-                  className={`flex items-center ${showProfiler ? "bg-pink-700" : "bg-pink-600 hover:bg-pink-700"}`}
+                  className={`flex items-center ${showProfiler ? "bg-pink-700 text-white" : "bg-pink-600 hover:bg-pink-700 text-white"}`}
                 >
                   <BarChart size={14} />
                 </Button>
@@ -505,7 +634,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
                     variant="outline"
                     size="sm"
                     onClick={toggleMultiplayer}
-                    className={`flex items-center ${multiplayerOpen ? "bg-blue-600" : ""}`}
+                    className={`flex items-center ${multiplayerOpen ? "bg-blue-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
                   >
                     <Users size={14} />
                   </Button>
@@ -518,7 +647,12 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={toggleTheme} className="flex items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTheme}
+                  className="flex items-center bg-purple-600 hover:bg-purple-700 text-white"
+                >
                   {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
                 </Button>
               </TooltipTrigger>
@@ -535,7 +669,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Left sidebar - Project files */}
         {showLeftSidebar && (
           <div
@@ -565,6 +699,12 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
                         : "hover:bg-gray-300"
                   }`}
                   onClick={() => openFile(file.name)}
+                  onMouseEnter={(e) => {
+                    // Make file draggable when hovered
+                    if (window.SAAAM?.dragDrop?.makeFileTreeItemDraggable) {
+                      window.SAAAM.dragDrop.makeFileTreeItemDraggable(e.currentTarget, file)
+                    }
+                  }}
                 >
                   <span className="text-sm">📄 {file.name}</span>
                 </div>
@@ -624,7 +764,7 @@ const SaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: 
           </div>
 
           {/* Editor or Game view */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden relative min-h-0">
             {showAssetManager ? (
               <div className="absolute inset-0 z-50 bg-gray-900 bg-opacity-90">
                 <AssetManager
@@ -643,15 +783,75 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                   }}
                 />
               </div>
-            ) : // Rest of your existing code for the editor/game/copilot views
-            activeTab === "editor" ? (
-              <div className={`h-full overflow-auto ${theme === "dark" ? "bg-gray-900" : "bg-white"} p-2`}>
+            ) : activeTab === "editor" ? (
+              <div className={`h-full overflow-auto ${theme === "dark" ? "bg-gray-900" : "bg-white"} p-2 relative`}>
                 <textarea
-                  className={`w-full h-full ${theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"} font-mono p-2 resize-none focus:outline-none`}
+                  ref={editorRef}
+                  className={`w-full h-full ${theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"} font-mono text-xs leading-snug p-2 resize-none focus:outline-none`}
                   value={code}
                   onChange={(e) => updateFileContent(e.target.value)}
                   spellCheck="false"
                 ></textarea>
+
+                {/* AI Suggestions Overlay */}
+                {aiEnabled && aiSuggestions.length > 0 && (
+                  <div className="absolute top-4 right-4 w-80 bg-gray-800 border border-purple-500 rounded-lg shadow-lg z-10">
+                    <div className="p-3 border-b border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Robot className="w-4 h-4 text-purple-400" />
+                          <span className="font-semibold">AI Suggestions</span>
+                        </div>
+                        <button onClick={() => setAiEnabled(false)} className="text-gray-400 hover:text-white">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-3 space-y-3 max-h-96 overflow-y-auto">
+                      {aiSuggestions.slice(0, 5).map((suggestion, i) => (
+                        <div key={i} className="p-3 bg-gray-700 rounded">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span
+                                  className={`text-xs px-2 py-1 rounded ${
+                                    suggestion.type === "optimization"
+                                      ? "bg-green-600"
+                                      : suggestion.type === "refactor"
+                                        ? "bg-blue-600"
+                                        : suggestion.type === "bug"
+                                          ? "bg-red-600"
+                                          : "bg-purple-600"
+                                  }`}
+                                >
+                                  {suggestion.type}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {Math.round((suggestion.confidence || 0.8) * 100)}%
+                                </span>
+                              </div>
+                              <p className="text-sm">{suggestion.message}</p>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex space-x-2">
+                            <button
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                              onClick={() => handleAISuggestionAccept(suggestion)}
+                            >
+                              Apply
+                            </button>
+                            <button
+                              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                              onClick={() => handleAISuggestionReject(suggestion)}
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : activeTab === "game" ? (
               // Your existing game view code
@@ -787,6 +987,12 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                         width={800}
                         height={600}
                         className="absolute inset-0 w-full h-full object-contain"
+                        onMouseEnter={(e) => {
+                          // Setup canvas as drop zone for game objects
+                          if (window.SAAAM?.dragDrop?.setupGameCanvasDropZone) {
+                            window.SAAAM.dragDrop.setupGameCanvasDropZone(e.currentTarget)
+                          }
+                        }}
                       />
 
                       {!running && (
@@ -812,6 +1018,7 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                           <div>Objects: 3</div>
                           <div>Memory: {memoryUsage} MB</div>
                           <div>Execution: {executionTime.toFixed(1)}s</div>
+                          {aiAnalysis && <div>AI Confidence: {Math.round(aiAnalysis.confidence * 100)}%</div>}
                         </div>
                       )}
 
@@ -874,18 +1081,25 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
 
           {/* Console output */}
           <div
-            className={`h-32 md:h-40 ${theme === "dark" ? "bg-gray-800 border-t border-gray-700" : "bg-gray-200 border-t border-gray-300"} overflow-y-auto`}
+            className={`h-40 ${theme === "dark" ? "bg-gray-800 border-t border-gray-700" : "bg-gray-200 border-t border-gray-300"} overflow-y-auto flex-shrink-0`}
           >
             <div
               className={`flex items-center justify-between px-2 py-1 ${theme === "dark" ? "bg-gray-900" : "bg-gray-300"}`}
             >
               <span className="text-sm font-semibold">Console</span>
-              <button
-                className={`text-sm ${theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}
-                onClick={() => setConsoleOutput([])}
-              >
-                Clear
-              </button>
+              <div className="flex items-center space-x-2">
+                {aiEnabled && aiAnalysis && (
+                  <span className="text-xs text-purple-400">
+                    AI: {aiAnalysis.issues.length} issues, {aiAnalysis.suggestions.length} suggestions
+                  </span>
+                )}
+                <button
+                  className={`text-sm ${theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}
+                  onClick={() => setConsoleOutput([])}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             <div className="p-2 font-mono text-sm">
               {consoleOutput.map((entry, index) => (
@@ -926,21 +1140,45 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                 <TabsList className="w-full">
                   <TabsTrigger
                     value="inspector"
-                    className={`flex-1 ${theme === "dark" ? "data-[state=active]:text-white" : "data-[state=active]:text-gray-900"}`}
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
                   >
-                    Inspector
+                    <Bug
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">Inspector</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="ai"
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
+                  >
+                    <Robot
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">AI</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="docs"
-                    className={`flex-1 ${theme === "dark" ? "data-[state=active]:text-white" : "data-[state=active]:text-gray-900"}`}
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
                   >
-                    Docs
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="settings"
-                    className={`flex-1 ${theme === "dark" ? "data-[state=active]:text-white" : "data-[state=active]:text-gray-900"}`}
-                  >
-                    Settings
+                    <BookOpen
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">Docs</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -1026,124 +1264,78 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                       ))}
                     </div>
                   </div>
+                </TabsContent>
 
-                  <div className={`text-sm font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mb-2`}>
-                    OBJECT PROPERTIES
-                  </div>
-
-                  <div className={`border ${theme === "dark" ? "border-gray-700" : "border-gray-300"} rounded mb-4`}>
-                    <div
-                      className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-300"} px-2 py-1 text-sm font-medium`}
-                    >
-                      Player
-                    </div>
-                    <div className="p-2">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm">Position</span>
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                          x: 100, y: 100
-                        </span>
-                      </div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm">Health</span>
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>100</span>
-                      </div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm">Frame</span>
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>0.00</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Facing</span>
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>Right</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {running && (
-                    <div className={`border ${theme === "dark" ? "border-gray-700" : "border-gray-300"} rounded mb-4`}>
-                      <div
-                        className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-300"} px-2 py-1 text-sm font-medium`}
+                <TabsContent value="ai" className="mt-2">
+                  <div className="p-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className={`font-bold ${theme === "dark" ? "text-purple-400" : "text-purple-600"}`}>
+                        AI Analysis
+                      </h3>
+                      <button
+                        onClick={() => setAiEnabled(!aiEnabled)}
+                        className={`px-2 py-1 text-xs rounded ${aiEnabled ? "bg-green-600" : "bg-gray-600"}`}
                       >
-                        Performance
-                      </div>
-                      <div className="p-2">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm">Execution Time</span>
-                          <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                            {executionTime.toFixed(1)}s
-                          </span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm">Memory Usage</span>
-                          <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                            {memoryUsage} MB
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Speed</span>
-                          <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                            {executionSpeed}x
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={`text-sm font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mb-2`}>
-                    DOCUMENTATION
-                  </div>
-                  <div className={`${theme === "dark" ? "bg-gray-900" : "bg-white"} p-2 rounded text-sm`}>
-                    <h3 className="text-yellow-400 font-bold">SAAAM Language</h3>
-                    <p className={`mt-1 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
-                      A clean, intuitive language for game development.
-                    </p>
-
-                    <h4 className="text-yellow-400 font-medium mt-3">Quick Reference</h4>
-                    <div className={`mt-1 space-y-1 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
-                      <details>
-                        <summary
-                          className={`cursor-pointer ${theme === "dark" ? "hover:text-white" : "hover:text-gray-900"}`}
-                        >
-                          Basic Syntax
-                        </summary>
-                        <ul className="pl-4 mt-1 space-y-1 list-disc">
-                          <li>var/let - Variable declaration</li>
-                          <li>const - Constant declaration</li>
-                          <li>function - Define functions</li>
-                        </ul>
-                      </details>
-                      <details>
-                        <summary
-                          className={`cursor-pointer ${theme === "dark" ? "hover:text-white" : "hover:text-gray-900"}`}
-                        >
-                          Game Features
-                        </summary>
-                        <ul className="pl-4 mt-1 space-y-1 list-disc">
-                          <li>vec2, vec3 - Vector types</li>
-                          <li>yield - Pause coroutine</li>
-                          <li>signals - Event system</li>
-                          <li>StateMachine - Object state management</li>
-                        </ul>
-                      </details>
-                      <details>
-                        <summary
-                          className={`cursor-pointer ${theme === "dark" ? "hover:text-white" : "hover:text-gray-900"}`}
-                        >
-                          Coroutines
-                        </summary>
-                        <ul className="pl-4 mt-1 space-y-1 list-disc">
-                          <li>function* - Define coroutine</li>
-                          <li>yield* - Pause and wait for another coroutine</li>
-                          <li>start_coroutine() - Start a coroutine</li>
-                        </ul>
-                      </details>
+                        {aiEnabled ? "ON" : "OFF"}
+                      </button>
                     </div>
 
-                    <div className="mt-3">
-                      <a href="#" className="text-blue-400 hover:underline">
-                        View Full Documentation
-                      </a>
-                    </div>
+                    {aiEnabled && aiAnalysis && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Code Quality</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1 bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full"
+                                style={{ width: `${aiAnalysis.confidence * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs">{Math.round(aiAnalysis.confidence * 100)}%</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Issues Found</div>
+                          <div className="space-y-1">
+                            {aiAnalysis.issues.slice(0, 3).map((issue, i) => (
+                              <div key={i} className="p-2 bg-gray-700 rounded text-xs">
+                                <div
+                                  className={`font-semibold ${
+                                    issue.severity === "error"
+                                      ? "text-red-400"
+                                      : issue.severity === "warning"
+                                        ? "text-yellow-400"
+                                        : "text-blue-400"
+                                  }`}
+                                >
+                                  {issue.type}: {issue.severity}
+                                </div>
+                                <div className="text-gray-300">{issue.message}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Metrics</div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span>Complexity:</span>
+                              <span>{aiAnalysis.metrics?.complexity || "N/A"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Maintainability:</span>
+                              <span>{Math.round(aiAnalysis.metrics?.maintainabilityIndex || 0)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Performance:</span>
+                              <span>{Math.round(aiAnalysis.metrics?.performance || 0)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -1153,68 +1345,30 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                       SAAAM Engine Documentation
                     </h3>
                     <p className={theme === "dark" ? "text-gray-300" : "text-gray-700"}>
-                      The SAAAM engine provides powerful tools for game development with a focus on performance and ease
-                      of use.
+                      The SAAAM engine provides powerful tools for game development with integrated AI assistance and
+                      drag-and-drop functionality.
                     </p>
 
                     <h4 className={`font-semibold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"}`}>
-                      Key Features
+                      New Features
                     </h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>Coroutine-based game flow</li>
-                      <li>Advanced procedural generation</li>
-                      <li>Integrated multiplayer support</li>
-                      <li>Dynamic difficulty adjustment</li>
-                      <li>Cinematic cutscene system</li>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>AI-powered code analysis and suggestions</li>
+                      <li>Drag and drop file management</li>
+                      <li>Real-time performance monitoring</li>
+                      <li>Advanced debugging tools</li>
+                      <li>Intelligent code completion</li>
                     </ul>
-                  </div>
-                </TabsContent>
 
-                <TabsContent value="settings" className="mt-2">
-                  <div className="p-2 space-y-4">
-                    <div>
-                      <label
-                        className={`block text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        Font Size
-                      </label>
-                      <select
-                        className={`mt-1 block w-full p-2 ${
-                          theme === "dark"
-                            ? "bg-gray-700 text-white border-gray-600"
-                            : "bg-white text-gray-900 border-gray-300"
-                        } rounded-md shadow-sm focus:outline-none`}
-                        value={fontSize}
-                        onChange={(e) => setFontSize(Number.parseInt(e.target.value))}
-                      >
-                        <option value="12">12px</option>
-                        <option value="14">14px</option>
-                        <option value="16">16px</option>
-                        <option value="18">18px</option>
-                        <option value="20">20px</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        className={`block text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        Show Minimap
-                      </label>
-                      <select
-                        className={`mt-1 block w-full p-2 ${
-                          theme === "dark"
-                            ? "bg-gray-700 text-white border-gray-600"
-                            : "bg-white text-gray-900 border-gray-300"
-                        } rounded-md shadow-sm focus:outline-none`}
-                        value={minimap}
-                        onChange={(e) => setMinimap(e.target.value)}
-                      >
-                        <option value="always">Always</option>
-                        <option value="mouseover">On Mouseover</option>
-                        <option value="never">Never</option>
-                      </select>
-                    </div>
+                    <h4 className={`font-semibold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"}`}>
+                      Drag & Drop
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>Drag files between folders</li>
+                      <li>Drop assets into code editor</li>
+                      <li>Drag game objects to canvas</li>
+                      <li>Import external files by dropping</li>
+                    </ul>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -1222,20 +1376,28 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
           </div>
         )}
       </div>
-
       {/* Status bar */}
       <div
         className={`flex items-center justify-between px-2 py-1 ${theme === "dark" ? "bg-blue-800" : "bg-blue-600"} text-white text-xs`}
       >
-        <div>Ready</div>
+        <div className="flex items-center space-x-4">
+          <span>Ready</span>
+          {aiEnabled && (
+            <span className="flex items-center space-x-1">
+              <Robot size={12} />
+              <span>AI Active</span>
+            </span>
+          )}
+        </div>
         <div className="flex space-x-4">
           <span>Line: 12</span>
           <span>Col: 4</span>
           <span>SAAAM v1.0.0</span>
+          {aiAnalysis && <span>AI: {Math.round(aiAnalysis.confidence * 100)}%</span>}
         </div>
       </div>
     </div>
   )
 }
 
-export default SaaamIDE
+export default EnhancedSaaamIDE

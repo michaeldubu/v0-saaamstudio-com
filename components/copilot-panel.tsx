@@ -16,8 +16,6 @@ import {
   AlertTriangle,
   X,
   FileText,
-  Zap,
-  Lightbulb,
 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardFooter } from "@/components/ui/card"
@@ -61,8 +59,7 @@ export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
     {
       id: "welcome",
       role: "assistant",
-      content:
-        "👋 Whats up? Im SAM a synergistic Autonomous Machine. What type of game are we building today?",
+      content: "👋 Whats up? Im SAM a synergistic Autonomous Machine. What type of game are we building today?",
       timestamp: new Date(),
     },
   ])
@@ -482,7 +479,7 @@ export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
               <h2 className="text-lg font-bold text-yellow-400">SAAAM Assistant</h2>
             </div>
             <Button variant="ghost" size="sm" onClick={() => setShowSidebar(false)} className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-gray-400 hover:text-white" />
             </Button>
           </div>
 
@@ -508,38 +505,6 @@ export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
               <CopilotCodeAnalyzer onSuggest={handleSuggestion} />
             </TabsContent>
           </Tabs>
-
-          <div className="p-3 border-t border-slate-700">
-            <div className="flex flex-col space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="justify-start"
-                onClick={() => handleSuggestion("Can you help me optimize my game's performance?")}
-              >
-                <Zap className="h-4 w-4 mr-2 text-yellow-400" />
-                Optimize Performance
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="justify-start"
-                onClick={() => handleSuggestion("Can you help me implement enemy AI behavior?")}
-              >
-                <Lightbulb className="h-4 w-4 mr-2 text-blue-400" />
-                Implement AI Behavior
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="justify-start"
-                onClick={() => handleSuggestion("Can you help me create a particle effect system?")}
-              >
-                <Sparkles className="h-4 w-4 mr-2 text-purple-400" />
-                Create Visual Effects
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -796,21 +761,6 @@ export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
               <div className="flex justify-between items-center">
                 <div className="text-xs text-gray-500">
                   {availableModels.includes("gpt-3.5-turbo") ? "Using GPT-3.5 Turbo" : "Model: Unknown"}
-                </div>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => handleSuggestion("Can you analyze my current code and suggest improvements?")}
-                  >
-                    <Code className="h-3 w-3 mr-1" />
-                    Analyze Code
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => setSidebarTab("files")}>
-                    <FileText className="h-3 w-3 mr-1" />
-                    Browse Files
-                  </Button>
                 </div>
               </div>
             </div>

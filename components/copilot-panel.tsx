@@ -62,7 +62,7 @@ export default function CopilotPanel({ initialCode }: CopilotPanelProps) {
       id: "welcome",
       role: "assistant",
       content:
-        "👋 Hi! I'm your SAAAM Copilot. I can help you write game code, explain concepts, or debug issues. What would you like to do today?",
+        "👋 Whats up? Im SAM a synergistic Autonomous Machine. What type of game are we building today?",
       timestamp: new Date(),
     },
   ])

@@ -14,34 +14,20 @@ import {
   X,
   Code,
   BotIcon as Robot,
-  Brain,
-  Network,
+  BookOpen,
 } from "lucide-react"
 import { SaaamCompiler } from "@/lib/saaam-compiler"
 import { SaaamInterpreter } from "@/lib/saaam-interpreter"
 import { sampleSaaamCode } from "@/lib/sample-code"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import CopilotPanel from "./copilot-panel"
 import AssetManager from "./asset-manager"
-// import { getSaaamSystemStatus } from "@/lib/saaam-system-initializer"
-// import { dragAndDropIntegration } from "@/lib/drag-and-drop-integration"
-// import { aiSystem } from "@/lib/ai-system"
 
-// Replace with local implementations:
-const getSaaamSystemStatus = () => ({
-  initialized: true,
-  systems: {
-    integrationManager: true,
-    neurosphere: true,
-    physics: true,
-    world: true,
-    linter: true,
-    intellisense: true,
-    neuralEngine: true,
-    sceneGraph: true,
-  },
-})
+// Import the new systems
+import { dragAndDropIntegration } from "@/lib/drag-and-drop-integration"
+import { aiSystem } from "@/lib/ai-system"
 
 // Main IDE component
 const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isMobile?: boolean }) => {
@@ -52,7 +38,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
   const [consoleOutput, setConsoleOutput] = useState<Array<{ type: string; message: string }>>([])
   const [visualMode, setVisualMode] = useState("game")
   const [showCoroutineVisualizer, setShowCoroutineVisualizer] = useState(false)
-  const [systemStatus, setSystemStatus] = useState(getSaaamSystemStatus())
 
   // AI System state
   const [aiAnalysis, setAiAnalysis] = useState(null)
@@ -99,7 +84,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
   const [users, setUsers] = useState<any[]>([])
   const [showLeftSidebar, setShowLeftSidebar] = useState(!isMobile)
   const [showRightSidebar, setShowRightSidebar] = useState(!isMobile)
-  const [systemsConnected, setSystemsConnected] = useState(false)
 
   // Asset manager state
   const [showAssetManager, setShowAssetManager] = useState(false)
@@ -110,70 +94,41 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
   const compilerRef = useRef<SaaamCompiler | null>(null)
   const interpreterRef = useRef<SaaamInterpreter | null>(null)
 
-  // Check for SAAAM systems
-  useEffect(() => {
-    const checkSystems = () => {
-      const status = getSaaamSystemStatus()
-      setSystemStatus(status)
-      setSystemsConnected(status.initialized)
-
-      if (status.initialized && !systemsConnected) {
-        addMessage("All SAAAM systems connected and ready", "success")
-      }
-    }
-
-    // Check immediately
-    checkSystems()
-
-    // Then check periodically
-    const interval = setInterval(checkSystems, 2000)
-
-    // Listen for system initialization events
-    const handleSystemsInitialized = () => {
-      checkSystems()
-    }
-
-    window.addEventListener("saaam-systems-initialized", handleSystemsInitialized)
-
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener("saaam-systems-initialized", handleSystemsInitialized)
-    }
-  }, [systemsConnected])
-
   // Initialize systems
   useEffect(() => {
     // Initialize drag and drop system
-    // if (typeof window !== "undefined") {
-    //   dragAndDropIntegration.initialize({
-    //     addFile: (name, content, type) => {
-    //       setFiles((prev) => [...prev, { name, content }])
-    //       addMessage(`File ${name} added via drag and drop`, "success")
-    //     },
-    //     insertCodeAtCursor: (codeToInsert) => {
-    //       if (editorRef.current) {
-    //         const textarea = editorRef.current
-    //         const start = textarea.selectionStart
-    //         const end = textarea.selectionEnd
-    //         const newCode = code.substring(0, start) + codeToInsert + code.substring(end)
-    //         setCode(newCode)
-    //         updateFileContent(newCode)
-    //       }
-    //     },
-    //     updateFileContent: (content) => {
-    //       setCode(content)
-    //       updateFileContent(content)
-    //     },
-    //   })
-    //   // Setup drag and drop for editor
-    //   if (editorRef.current) {
-    //     window.SAAAM?.dragDrop?.setupCodeEditorDropZone(editorRef.current)
-    //   }
-    // }
-    // return () => {
-    //   // Cleanup on unmount
-    //   dragAndDropIntegration.destroy()
-    // }
+    if (typeof window !== "undefined") {
+      dragAndDropIntegration.initialize({
+        addFile: (name, content, type) => {
+          setFiles((prev) => [...prev, { name, content }])
+          addMessage(`File ${name} added via drag and drop`, "success")
+        },
+        insertCodeAtCursor: (codeToInsert) => {
+          if (editorRef.current) {
+            const textarea = editorRef.current
+            const start = textarea.selectionStart
+            const end = textarea.selectionEnd
+            const newCode = code.substring(0, start) + codeToInsert + code.substring(end)
+            setCode(newCode)
+            updateFileContent(newCode)
+          }
+        },
+        updateFileContent: (content) => {
+          setCode(content)
+          updateFileContent(content)
+        },
+      })
+
+      // Setup drag and drop for editor
+      if (editorRef.current) {
+        window.SAAAM?.dragDrop?.setupCodeEditorDropZone(editorRef.current)
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount
+      dragAndDropIntegration.destroy()
+    }
   }, [])
 
   // Initialize compiler and interpreter
@@ -183,7 +138,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
     if (typeof window !== "undefined") {
       // Create a global SAAAM object for the interpreter to use
       ;(window as any).SAAAM = {
-        ...(window.SAAAM || {}),
         keyboardCheck: (keyCode: number) => interpreterRef.current?.keyboardCheck(keyCode) || false,
         keyboardCheckPressed: (keyCode: number) => interpreterRef.current?.keyboardCheckPressed(keyCode) || false,
         drawSprite: (spriteIndex: number, imageIndex: number, x: number, y: number) =>
@@ -231,37 +185,9 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
     if (aiEnabled && code) {
       const analyzeCodeWithAI = async () => {
         try {
-          // Use the linter from SAAAM systems if available
-          if (window.SAAAM?.lintCode) {
-            const lintResults = window.SAAAM.lintCode(code, currentFile)
-
-            // Format results for display
-            const analysis = {
-              issues: lintResults,
-              suggestions: lintResults
-                .filter((issue) => issue.severity === "info")
-                .map((issue) => ({
-                  type: "suggestion",
-                  message: issue.message,
-                  line: issue.line,
-                  confidence: 0.8,
-                })),
-              confidence: lintResults.length > 0 ? 0.7 : 0.9,
-              metrics: {
-                complexity: lintResults.filter((i) => i.type === "function-complexity").length > 0 ? "high" : "medium",
-                maintainabilityIndex: 75,
-                performance: 80,
-              },
-            }
-
-            setAiAnalysis(analysis)
-            setAiSuggestions(analysis.suggestions)
-          } else {
-            // Fallback to AI system
-            // const analysis = await aiSystem.analyzeCode(code, currentFile)
-            // setAiAnalysis(analysis)
-            // setAiSuggestions(analysis.suggestions || [])
-          }
+          const analysis = await aiSystem.analyzeCode(code, currentFile)
+          setAiAnalysis(analysis)
+          setAiSuggestions(analysis.suggestions || [])
 
           // Emit code change event for AI system
           document.dispatchEvent(
@@ -598,40 +524,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
               AI: {Math.round(aiAnalysis.confidence * 100)}%
             </span>
           )}
-
-          {/* System status indicators */}
-          <div className="flex items-center space-x-1 ml-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={`w-2 h-2 rounded-full ${systemStatus.systems.integrationManager ? "bg-green-500" : "bg-red-500"}`}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                Integration Manager: {systemStatus.systems.integrationManager ? "Connected" : "Disconnected"}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={`w-2 h-2 rounded-full ${systemStatus.systems.neurosphere ? "bg-green-500" : "bg-red-500"}`}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                Neurosphere: {systemStatus.systems.neurosphere ? "Connected" : "Disconnected"}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={`w-2 h-2 rounded-full ${systemStatus.systems.physics ? "bg-green-500" : "bg-red-500"}`}
-                />
-              </TooltipTrigger>
-              <TooltipContent>Physics: {systemStatus.systems.physics ? "Connected" : "Disconnected"}</TooltipContent>
-            </Tooltip>
-          </div>
         </div>
         <div className="flex space-x-1 md:space-x-2">
           <TooltipProvider>
@@ -704,53 +596,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
                 </Button>
               </TooltipTrigger>
               <TooltipContent>AI Coding Assistant</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Neural Engine button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (window.SAAAM?.neuralEngine) {
-                      addMessage("Neural engine activated", "success")
-                    } else {
-                      addMessage("Neural engine not available", "error")
-                    }
-                  }}
-                  className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  <Brain size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Neural Engine</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Neurosphere button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (window.SAAAM?.neurosphere) {
-                      const state = window.SAAAM.neurosphere.getCurrentState()
-                      addMessage(`Neurosphere consciousness: ${state.consciousness.toFixed(2)}`, "info")
-                    } else {
-                      addMessage("Neurosphere not available", "error")
-                    }
-                  }}
-                  className="flex items-center bg-cyan-600 hover:bg-cyan-700 text-white"
-                >
-                  <Network size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Neurosphere Status</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -889,22 +734,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
                 <span className="text-sm">🏞️ rooms/</span>
               </div>
             </div>
-
-            {/* System status section */}
-            <div className={`p-2 font-semibold text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mt-4`}>
-              SYSTEMS
-            </div>
-            <div className="px-2">
-              {Object.entries(systemStatus.systems).map(([name, status]) => (
-                <div key={name} className="flex items-center justify-between p-1">
-                  <span className="text-xs">{name}</span>
-                  <div
-                    className={`w-2 h-2 rounded-full ${status ? "bg-green-500" : "bg-red-500"}`}
-                    title={status ? "Connected" : "Disconnected"}
-                  />
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -931,12 +760,6 @@ const EnhancedSaaamIDE = ({ initialCode, isMobile }: { initialCode?: string; isM
               onClick={() => setActiveTab("copilot")}
             >
               Copilot
-            </button>
-            <button
-              className={`px-3 md:px-4 py-2 text-sm font-medium ${activeTab === "neural" ? (theme === "dark" ? "bg-gray-700 text-white" : "bg-white text-gray-900") : theme === "dark" ? "text-gray-400 hover:bg-gray-700" : "text-gray-600 hover:bg-gray-300"}`}
-              onClick={() => setActiveTab("neural")}
-            >
-              Neural
             </button>
           </div>
 
@@ -1110,7 +933,7 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                                 <div>
                                   <div className="text-white text-sm">{mem.category}</div>
                                   <div className="text-gray-400 text-xs">
-                                    {mem.percentage}% ({(mem.bytes / 1024).toFixed(1)}KB)
+                                    {(mem.bytes / 1024).toFixed(1)} KB ({mem.percentage}%)
                                   </div>
                                 </div>
                               </div>
@@ -1120,126 +943,186 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
 
                         {/* Frame time graph */}
                         <div className="bg-gray-800 p-4 rounded-lg">
-                          <h3 className="text-yellow-400 font-bold mb-2">Frame Time (Last 60 frames)</h3>
-                          <div className="h-32 flex items-end space-x-1">
+                          <h3 className="text-yellow-400 font-bold mb-2">Frame Times (ms)</h3>
+                          <div className="h-32 flex items-end space-x-1 overflow-x-auto">
                             {profilerData.frames.map((frameTime, i) => (
                               <div
                                 key={i}
-                                className="bg-green-500 w-2"
+                                className="w-2 bg-blue-500 flex-shrink-0"
                                 style={{
-                                  height: `${(frameTime / 25) * 100}%`,
-                                  backgroundColor: frameTime > 20 ? "#FF5630" : frameTime > 18 ? "#FFAB00" : "#36B37E",
+                                  height: `${Math.min(100, frameTime * 5)}%`,
+                                  backgroundColor: frameTime > 16.7 ? "#FF5630" : "#36B37E",
                                 }}
                               ></div>
                             ))}
                           </div>
-                          <div className="text-gray-400 text-xs mt-2">
-                            Target: 16.67ms (60 FPS) | Current:{" "}
-                            {profilerData.frames[profilerData.frames.length - 1].toFixed(1)}
-                            ms
+                          <div className="flex justify-between text-gray-400 text-xs mt-1">
+                            <div>0 Frame</div>
+                            <div>30</div>
+                            <div>60 Frame</div>
+                          </div>
+                          <div className="mt-2 text-center text-sm">
+                            <span className="text-white">Average: </span>
+                            <span className="text-green-400">
+                              {(profilerData.frames.reduce((a, b) => a + b, 0) / profilerData.frames.length).toFixed(2)}{" "}
+                              ms
+                            </span>
+                            <span className="text-white ml-4">FPS: </span>
+                            <span className="text-green-400">
+                              {Math.round(
+                                1000 / (profilerData.frames.reduce((a, b) => a + b, 0) / profilerData.frames.length),
+                              )}
+                            </span>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <canvas
-                      ref={canvasRef}
-                      width={800}
-                      height={600}
-                      className="border border-gray-600 bg-black"
-                      style={{ maxWidth: "100%", maxHeight: "100%" }}
-                    />
-                    {!running && (
-                      <div className="text-white text-center mt-4">
-                        <p className="text-lg">Click "Run" to start your game</p>
-                        <p className="text-sm text-gray-400">Your SAAAM code will be executed here</p>
-                      </div>
-                    )}
-                  </div>
+                  <>
+                    <div className="bg-gray-800 border border-gray-700 w-full md:w-4/5 h-3/4 flex items-center justify-center relative overflow-hidden">
+                      {/* Game canvas */}
+                      <canvas
+                        ref={canvasRef}
+                        width={800}
+                        height={600}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        onMouseEnter={(e) => {
+                          // Setup canvas as drop zone for game objects
+                          if (window.SAAAM?.dragDrop?.setupGameCanvasDropZone) {
+                            window.SAAAM.dragDrop.setupGameCanvasDropZone(e.currentTarget)
+                          }
+                        }}
+                      />
+
+                      {!running && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                          {currentBreakpoint !== null ? (
+                            <div className="text-center">
+                              <div className="text-xl text-yellow-400">Paused at Breakpoint</div>
+                              <div className="text-sm text-gray-400 mt-2">Press "Step" to continue</div>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <div className="text-xl text-gray-300">Game Not Running</div>
+                              <div className="text-sm text-gray-400 mt-2">Press "Run" to start the game</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Debug overlay */}
+                      {debugMode && running && (
+                        <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white p-2 text-xs font-mono">
+                          <div>FPS: {Math.round(1000 / (16 + Math.random() * 2))}</div>
+                          <div>Objects: 3</div>
+                          <div>Memory: {memoryUsage} MB</div>
+                          <div>Execution: {executionTime.toFixed(1)}s</div>
+                          {aiAnalysis && <div>AI Confidence: {Math.round(aiAnalysis.confidence * 100)}%</div>}
+                        </div>
+                      )}
+
+                      {/* Execution speed controls */}
+                      {running && (
+                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white p-2 rounded flex items-center space-x-2">
+                          <span className="text-xs">Speed:</span>
+                          <button
+                            className={`px-2 py-1 text-xs rounded ${executionSpeed === 0.5 ? "bg-blue-600" : "bg-gray-700"}`}
+                            onClick={() => setExecutionSpeed(0.5)}
+                          >
+                            0.5x
+                          </button>
+                          <button
+                            className={`px-2 py-1 text-xs rounded ${executionSpeed === 1.0 ? "bg-blue-600" : "bg-gray-700"}`}
+                            onClick={() => setExecutionSpeed(1.0)}
+                          >
+                            1x
+                          </button>
+                          <button
+                            className={`px-2 py-1 text-xs rounded ${executionSpeed === 2.0 ? "bg-blue-600" : "bg-gray-700"}`}
+                            onClick={() => setExecutionSpeed(2.0)}
+                          >
+                            2x
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex space-x-2 md:space-x-4 mt-4 overflow-x-auto px-2 w-full justify-center">
+                      <button
+                        className={`px-2 md:px-3 py-1 rounded flex items-center text-sm ${visualMode === "game" ? "bg-blue-600" : "bg-gray-700"}`}
+                        onClick={() => setVisualMode("game")}
+                      >
+                        <span>Game View</span>
+                      </button>
+                      <button
+                        className={`px-2 md:px-3 py-1 rounded flex items-center text-sm ${visualMode === "physics" ? "bg-blue-600" : "bg-gray-700"}`}
+                        onClick={() => setVisualMode("physics")}
+                      >
+                        <span>Physics Debug</span>
+                      </button>
+                      <button
+                        className={`px-2 md:px-3 py-1 rounded flex items-center text-sm ${visualMode === "collision" ? "bg-blue-600" : "bg-gray-700"}`}
+                        onClick={() => setVisualMode("collision")}
+                      >
+                        <span>Collision</span>
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
-            ) : activeTab === "copilot" ? (
-              <CopilotPanel
-                code={code}
-                onCodeChange={updateFileContent}
-                currentFile={currentFile}
-                files={files}
-                onFileSelect={openFile}
-                theme={theme}
-                onMessage={addMessage}
-              />
-            ) : activeTab === "neural" ? (
-              <div className="h-full p-4 bg-gray-900 text-white">
-                <h2 className="text-xl font-bold mb-4">Neural Engine Interface</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-800 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-2">Neurosphere Status</h3>
-                    <div className="space-y-2">
-                      <div>Consciousness Level: {systemStatus.systems.neurosphere ? "85%" : "Offline"}</div>
-                      <div>Pattern Recognition: {systemStatus.systems.neurosphere ? "Active" : "Inactive"}</div>
-                      <div>Learning Rate: {systemStatus.systems.neurosphere ? "0.001" : "N/A"}</div>
-                    </div>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-2">Neural Engine</h3>
-                    <div className="space-y-2">
-                      <div>Network Layers: {systemStatus.systems.neuralEngine ? "5" : "N/A"}</div>
-                      <div>Training Epochs: {systemStatus.systems.neuralEngine ? "1000" : "N/A"}</div>
-                      <div>Accuracy: {systemStatus.systems.neuralEngine ? "92.5%" : "N/A"}</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
-                    onClick={() => {
-                      if (window.SAAAM?.neuralEngine) {
-                        addMessage("Neural training initiated", "success")
-                      } else {
-                        addMessage("Neural engine not available", "error")
-                      }
-                    }}
-                  >
-                    Start Neural Training
-                  </button>
-                </div>
+            ) : (
+              // Your existing copilot view
+              <div className="h-full flex flex-col bg-gray-900 items-center justify-center p-4 overflow-auto">
+                <CopilotPanel />
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* Console */}
+          {/* Console output */}
           <div
-            className={`h-32 ${theme === "dark" ? "bg-gray-800 border-t border-gray-700" : "bg-gray-100 border-t border-gray-300"} overflow-y-auto p-2`}
+            className={`h-40 ${theme === "dark" ? "bg-gray-800 border-t border-gray-700" : "bg-gray-200 border-t border-gray-300"} overflow-y-auto flex-shrink-0`}
           >
-            <div className={`text-xs font-semibold mb-2 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-              CONSOLE OUTPUT
+            <div
+              className={`flex items-center justify-between px-2 py-1 ${theme === "dark" ? "bg-gray-900" : "bg-gray-300"}`}
+            >
+              <span className="text-sm font-semibold">Console</span>
+              <div className="flex items-center space-x-2">
+                {aiEnabled && aiAnalysis && (
+                  <span className="text-xs text-purple-400">
+                    AI: {aiAnalysis.issues.length} issues, {aiAnalysis.suggestions.length} suggestions
+                  </span>
+                )}
+                <button
+                  className={`text-sm ${theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}
+                  onClick={() => setConsoleOutput([])}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-            <div className="space-y-1">
-              {consoleOutput.map((output, index) => (
+            <div className="p-2 font-mono text-sm">
+              {consoleOutput.map((entry, index) => (
                 <div
                   key={index}
-                  className={`text-xs font-mono ${
-                    output.type === "error"
+                  className={`${
+                    entry.type === "error"
                       ? "text-red-400"
-                      : output.type === "success"
+                      : entry.type === "success"
                         ? "text-green-400"
-                        : output.type === "warning"
-                          ? "text-yellow-400"
-                          : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-gray-700"
+                        : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-gray-700"
                   }`}
                 >
-                  {output.message}
+                  {entry.message}
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right sidebar - Debug info and tools */}
+        {/* Right sidebar - Properties, variables, and documentation */}
         {showRightSidebar && (
           <div
             className={`w-64 ${theme === "dark" ? "bg-gray-800 border-l border-gray-700" : "bg-gray-200 border-l border-gray-300"} overflow-y-auto ${isMobile ? "absolute right-0 z-10 h-full" : ""}`}
@@ -1251,139 +1134,267 @@ const ${asset.name.split(".")[0]} = SAAAM.load${asset.type.charAt(0).toUpperCase
                 </Button>
               </div>
             )}
+            <div className="p-2">
+              {/* Tab selection for right sidebar */}
+              <Tabs defaultValue="inspector">
+                <TabsList className="w-full">
+                  <TabsTrigger
+                    value="inspector"
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
+                  >
+                    <Bug
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">Inspector</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="ai"
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
+                  >
+                    <Robot
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">AI</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="docs"
+                    className={`flex-1 flex items-center justify-center space-x-1 ${theme === "dark" ? "data-[state=active]:text-white data-[state=inactive]:text-gray-400" : "data-[state=active]:text-gray-900 data-[state=inactive]:text-gray-600"}`}
+                  >
+                    <BookOpen
+                      size={14}
+                      className={
+                        theme === "dark"
+                          ? "text-gray-400 data-[state=active]:text-white"
+                          : "text-gray-600 data-[state=active]:text-gray-900"
+                      }
+                    />
+                    <span className="hidden sm:inline">Docs</span>
+                  </TabsTrigger>
+                </TabsList>
 
-            {/* Execution stats */}
-            <div className={`p-2 font-semibold text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-              EXECUTION STATS
-            </div>
-            <div className="px-2 space-y-1">
-              <div className="text-xs">
-                <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Runtime:</span>{" "}
-                <span className="text-green-400">{executionTime.toFixed(1)}s</span>
-              </div>
-              <div className="text-xs">
-                <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Memory:</span>{" "}
-                <span className="text-blue-400">{memoryUsage}MB</span>
-              </div>
-              <div className="text-xs">
-                <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>FPS:</span>{" "}
-                <span className="text-yellow-400">{running ? "60" : "0"}</span>
-              </div>
-            </div>
-
-            {/* Variable inspector */}
-            {debugMode && variableInspector.length > 0 && (
-              <>
-                <div
-                  className={`p-2 font-semibold text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mt-4`}
-                >
-                  VARIABLES
-                </div>
-                <div className="px-2 space-y-1">
-                  {variableInspector.map((variable, index) => (
-                    <div
-                      key={index}
-                      className={`text-xs p-1 rounded cursor-pointer ${
-                        selectedVariable === variable.name
-                          ? theme === "dark"
-                            ? "bg-blue-800"
-                            : "bg-blue-100"
-                          : theme === "dark"
-                            ? "hover:bg-gray-700"
-                            : "hover:bg-gray-300"
-                      }`}
-                      onClick={() => setSelectedVariable(variable.name)}
-                    >
-                      <div className="flex justify-between">
-                        <span className={variable.isConstant ? "text-purple-400" : "text-white"}>{variable.name}</span>
-                        <span className="text-gray-400">{variable.scope}</span>
+                <TabsContent value="inspector" className="mt-2">
+                  {debugMode && (
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center">
+                        <div
+                          className={`text-sm font-semibold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"} mb-2`}
+                        >
+                          BREAKPOINTS
+                        </div>
+                        <button
+                          className={`text-xs ${theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                          + Add
+                        </button>
                       </div>
-                      <div className="text-gray-400">
-                        {typeof variable.value === "object" ? JSON.stringify(variable.value) : variable.value}
+                      <div className={`${theme === "dark" ? "bg-gray-900" : "bg-white"} rounded p-2 text-sm`}>
+                        <div
+                          className={`flex justify-between items-center p-1 ${currentBreakpoint === 42 ? "bg-yellow-900 bg-opacity-50" : theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-300"} rounded`}
+                        >
+                          <span className="text-xs">Line 42 (Move right)</span>
+                          <button className="text-red-400 hover:text-red-300 text-xs">×</button>
+                        </div>
+                        <div
+                          className={`flex justify-between items-center p-1 ${currentBreakpoint === 51 ? "bg-yellow-900 bg-opacity-50" : theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-300"} rounded`}
+                        >
+                          <span className="text-xs">Line 51 (Move left)</span>
+                          <button className="text-red-400 hover:text-red-300 text-xs">×</button>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
+                  )}
 
-            {/* AI Analysis */}
-            {aiEnabled && aiAnalysis && (
-              <>
-                <div
-                  className={`p-2 font-semibold text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mt-4`}
-                >
-                  AI ANALYSIS
-                </div>
-                <div className="px-2 space-y-2">
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Confidence:</span>{" "}
-                    <span className="text-purple-400">{Math.round(aiAnalysis.confidence * 100)}%</span>
+                  <div className={`text-sm font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mb-2`}>
+                    VARIABLES INSPECTOR
                   </div>
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Complexity:</span>{" "}
-                    <span
-                      className={
-                        aiAnalysis.metrics?.complexity === "high"
-                          ? "text-red-400"
-                          : aiAnalysis.metrics?.complexity === "medium"
-                            ? "text-yellow-400"
-                            : "text-green-400"
-                      }
+
+                  <div className={`border ${theme === "dark" ? "border-gray-700" : "border-gray-300"} rounded mb-4`}>
+                    <div
+                      className={`${theme === "dark" ? "bg-gray-700" : "bg-gray-300"} px-2 py-1 text-sm font-medium flex justify-between items-center`}
                     >
-                      {aiAnalysis.metrics?.complexity || "low"}
-                    </span>
-                  </div>
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Performance:</span>{" "}
-                    <span className="text-blue-400">{aiAnalysis.metrics?.performance || 85}%</span>
-                  </div>
-                  {aiAnalysis.issues && aiAnalysis.issues.length > 0 && (
-                    <div className="mt-2">
-                      <div className="text-xs text-red-400 font-semibold">Issues:</div>
-                      {aiAnalysis.issues.slice(0, 3).map((issue, i) => (
-                        <div key={i} className="text-xs text-red-300 mt-1">
-                          • {issue.message}
+                      <span>Runtime Values</span>
+                      <button
+                        className={`text-xs ${theme === "dark" ? "text-gray-300 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {variableInspector.map((variable, i) => (
+                        <div
+                          key={i}
+                          className={`p-2 border-t ${theme === "dark" ? "border-gray-700" : "border-gray-300"} ${theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-300"} cursor-pointer ${selectedVariable === variable.name ? (theme === "dark" ? "bg-gray-700" : "bg-gray-300") : ""}`}
+                          onClick={() => setSelectedVariable(variable.name)}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className={`text-sm ${variable.isConstant ? "text-purple-400" : "text-blue-400"}`}>
+                              {variable.name}
+                            </span>
+                            <span className="text-xs text-gray-400">{variable.type}</span>
+                          </div>
+                          <div className="mt-1">
+                            {typeof variable.value === "object" ? (
+                              variable.type === "vec2" ? (
+                                <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                                  ({variable.value.x.toFixed(1)}, {variable.value.y.toFixed(1)})
+                                </span>
+                              ) : (
+                                <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                                  {JSON.stringify(variable.value)}
+                                </span>
+                              )
+                            ) : (
+                              <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                                {String(variable.value)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Scope: {variable.scope}</div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              </>
-            )}
+                  </div>
+                </TabsContent>
 
-            {/* Multiplayer panel */}
-            {multiplayerOpen && (
-              <>
-                <div
-                  className={`p-2 font-semibold text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"} mt-4`}
-                >
-                  MULTIPLAYER
-                </div>
-                <div className="px-2 space-y-2">
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Status:</span>{" "}
-                    <span className="text-green-400">Connected</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Room:</span>{" "}
-                    <span className="text-blue-400">saaam-dev-123</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>Users online:</span>{" "}
-                    <span className="text-yellow-400">{users.length}</span>
-                  </div>
-                  {users.map((user, index) => (
-                    <div key={index} className="flex items-center space-x-2 text-xs">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span>{user.name}</span>
+                <TabsContent value="ai" className="mt-2">
+                  <div className="p-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className={`font-bold ${theme === "dark" ? "text-purple-400" : "text-purple-600"}`}>
+                        AI Analysis
+                      </h3>
+                      <button
+                        onClick={() => setAiEnabled(!aiEnabled)}
+                        className={`px-2 py-1 text-xs rounded ${aiEnabled ? "bg-green-600" : "bg-gray-600"}`}
+                      >
+                        {aiEnabled ? "ON" : "OFF"}
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
+
+                    {aiEnabled && aiAnalysis && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Code Quality</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-1 bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full"
+                                style={{ width: `${aiAnalysis.confidence * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs">{Math.round(aiAnalysis.confidence * 100)}%</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Issues Found</div>
+                          <div className="space-y-1">
+                            {aiAnalysis.issues.slice(0, 3).map((issue, i) => (
+                              <div key={i} className="p-2 bg-gray-700 rounded text-xs">
+                                <div
+                                  className={`font-semibold ${
+                                    issue.severity === "error"
+                                      ? "text-red-400"
+                                      : issue.severity === "warning"
+                                        ? "text-yellow-400"
+                                        : "text-blue-400"
+                                  }`}
+                                >
+                                  {issue.type}: {issue.severity}
+                                </div>
+                                <div className="text-gray-300">{issue.message}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Metrics</div>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span>Complexity:</span>
+                              <span>{aiAnalysis.metrics?.complexity || "N/A"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Maintainability:</span>
+                              <span>{Math.round(aiAnalysis.metrics?.maintainabilityIndex || 0)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Performance:</span>
+                              <span>{Math.round(aiAnalysis.metrics?.performance || 0)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="docs" className="mt-2">
+                  <div className="p-2 space-y-4">
+                    <h3 className={`font-bold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"}`}>
+                      SAAAM Engine Documentation
+                    </h3>
+                    <p className={theme === "dark" ? "text-gray-300" : "text-gray-700"}>
+                      The SAAAM engine provides powerful tools for game development with integrated AI assistance and
+                      drag-and-drop functionality.
+                    </p>
+
+                    <h4 className={`font-semibold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"}`}>
+                      New Features
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>AI-powered code analysis and suggestions</li>
+                      <li>Drag and drop file management</li>
+                      <li>Real-time performance monitoring</li>
+                      <li>Advanced debugging tools</li>
+                      <li>Intelligent code completion</li>
+                    </ul>
+
+                    <h4 className={`font-semibold ${theme === "dark" ? "text-yellow-400" : "text-yellow-600"}`}>
+                      Drag & Drop
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      <li>Drag files between folders</li>
+                      <li>Drop assets into code editor</li>
+                      <li>Drag game objects to canvas</li>
+                      <li>Import external files by dropping</li>
+                    </ul>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         )}
+      </div>
+      {/* Status bar */}
+      <div
+        className={`flex items-center justify-between px-2 py-1 ${theme === "dark" ? "bg-blue-800" : "bg-blue-600"} text-white text-xs`}
+      >
+        <div className="flex items-center space-x-4">
+          <span>Ready</span>
+          {aiEnabled && (
+            <span className="flex items-center space-x-1">
+              <Robot size={12} />
+              <span>AI Active</span>
+            </span>
+          )}
+        </div>
+        <div className="flex space-x-4">
+          <span>Line: 12</span>
+          <span>Col: 4</span>
+          <span>SAAAM v1.0.0</span>
+          {aiAnalysis && <span>AI: {Math.round(aiAnalysis.confidence * 100)}%</span>}
+        </div>
       </div>
     </div>
   )

@@ -1,16 +1,6 @@
 import { OpenAI } from "openai"
 
 export async function GET() {
-  if (typeof window !== "undefined") {
-    return Response.json(
-      {
-        success: false,
-        error: "This API route should only run on the server",
-      },
-      { status: 500 },
-    )
-  }
-
   try {
     console.log("Testing OpenAI API connection...")
     console.log("API Key available:", !!process.env.OPENAI_API_KEY)
@@ -29,11 +19,9 @@ export async function GET() {
       )
     }
 
-    // Create OpenAI client with proper server-side configuration
+    // Create OpenAI client
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      // Ensure we're running server-side
-      dangerouslyAllowBrowser: false,
     })
 
     // Make a simple API call to test the connection

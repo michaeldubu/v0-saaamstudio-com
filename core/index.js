@@ -3,10 +3,10 @@
  * Self-Adaptive Model for Dynamic UI Generation
  */
 
-import { ConceptMemoryBank } from "./core/concept_bank.js"
-import { DynamicSegmentation } from "./core/segmentation.js"
-import { ThoughtState } from "./core/thought_state.js"
-import { ConceptualDreaming } from "./core/dream_engine.js"
+import { ConceptMemoryBank } from "./concept_bank.js"
+import { DynamicSegmentation } from "./segmentation.js"
+import { ThoughtState } from "./thought_state.js"
+import { ConceptualDreaming } from "./dream_engine.js"
 
 /**
  * Main SAM class that orchestrates all components

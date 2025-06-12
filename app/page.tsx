@@ -52,6 +52,7 @@ import "../styles/animations.css"
 import { ProjectGenerator } from "@/components/project-generator"
 import { PreviewPanel } from "@/components/preview-panel"
 import { GitHubIntegration } from "@/components/github-integration" // Import the new component
+import SaaamStudioPage from "./studio/page" // Add this import at the top
 
 export default function SAMDevWorkspace() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
@@ -83,7 +84,7 @@ export default function SAMDevWorkspace() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const [generatedProject, setGeneratedProject] = useState(null)
+  const [generatedProject, setGeneratedProject] = useState<any>(null) // Use 'any' for now, or define a more specific type
   const [isGeneratingProject, setIsGeneratingProject] = useState(false)
 
   const handleProjectGenerate = (projectData: any) => {
@@ -91,8 +92,56 @@ export default function SAMDevWorkspace() {
 
     // Simulate generation delay
     setTimeout(() => {
-      setGeneratedProject(projectData)
+      // Mock generated files based on the project description/template
+      const mockGeneratedFiles = [
+        {
+          name: "game.saaam",
+          content: `// SAAAM script for ${projectData.template || "your project"}
+// Description: ${projectData.description}
+
+entity Player {
+  property health = 100;
+  action attack(target) {
+    log("Player attacks " + target.name);
+  }
+}
+
+on gameStart {
+  log("Game initialized for ${projectData.template || "your project"}!");
+  let player = new Player();
+  player.attack("enemy");
+}
+`,
+          type: "file",
+        },
+        {
+          name: "config.json",
+          content: JSON.stringify(
+            {
+              projectName: projectData.description,
+              framework: projectData.framework,
+              features: projectData.features,
+            },
+            null,
+            2,
+          ),
+          type: "file",
+        },
+      ]
+
+      setGeneratedProject({ ...projectData, generatedFiles: mockGeneratedFiles })
       setIsGeneratingProject(false)
+      setActiveTab("studio") // Switch to Studio tab after generation
+      setNotifications([
+        {
+          id: Date.now(),
+          title: "Project Generated!",
+          message: `Your project "${projectData.description}" is ready in the Studio.`,
+          time: "Just now",
+          read: false,
+        },
+        ...notifications,
+      ])
     }, 2000)
   }
 
@@ -669,6 +718,13 @@ export default function SAMDevWorkspace() {
                   <Share2 className="h-4 w-4 mr-2" />
                   Community
                 </TabsTrigger>
+                <TabsTrigger
+                  value="studio"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-teal-500 data-[state=active]:text-white"
+                >
+                  <Gamepad2 className="h-4 w-4 mr-2" />
+                  Studio
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -835,6 +891,10 @@ export default function SAMDevWorkspace() {
                 <h2 className="text-2xl font-bold text-white mb-2">Community Hub</h2>
                 <p className="text-slate-300">This tab would contain community features, forums and shared projects</p>
               </div>
+            </TabsContent>
+
+            <TabsContent value="studio" className="mt-0 h-[calc(100vh-180px)]">
+              <SaaamStudioPage initialProjectData={generatedProject} />
             </TabsContent>
           </Tabs>
         </div>

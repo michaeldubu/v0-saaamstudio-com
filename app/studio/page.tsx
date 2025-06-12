@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Play, Save, FilePlus, Code, XCircle, Loader2 } from "lucide-react"
 
 // Import the core SAAAM engine
-import { getSAM } from "@/core/index.js"
+import { getSAM } from "../../core/index.js"
 
 export default function SaaamStudioPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)

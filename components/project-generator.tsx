@@ -59,17 +59,17 @@ export function ProjectGenerator({ onGenerate }: ProjectGeneratorProps) {
   ]
 
   const languages = [
-    { id: "javascript", name: "JavaScript", icon: "JS" },
-    { id: "typescript", name: "TypeScript", icon: "TS" },
+    { id: "javascript", name: "JavaScript", icon: "JS" }, // No direct Lucide icon
+    { id: "typescript", name: "TypeScript", icon: "TS" }, // No direct Lucide icon
     { id: "python", name: "Python", icon: "🐍" },
-    { id: "go", name: "Go", icon: "Go" },
+    { id: "go", name: "Go", icon: "Go" }, // No direct Lucide icon
     { id: "java", name: "Java", icon: "☕" },
-    { id: "csharp", name: "C#", icon: ".NET" },
+    { id: "csharp", name: "C#", icon: ".NET" }, // No direct Lucide icon
     { id: "rust", name: "Rust", icon: "🦀" },
     { id: "php", name: "PHP", icon: "🐘" },
     { id: "ruby", name: "Ruby", icon: "💎" },
-    { id: "swift", name: "Swift", icon: " swift" },
-    { id: "kotlin", name: "Kotlin", icon: "K" },
+    { id: "swift", name: "Swift", icon: " swift" }, // No direct Lucide icon
+    { id: "kotlin", name: "Kotlin", icon: "K" }, // No direct Lucide icon
   ]
 
   const features = [

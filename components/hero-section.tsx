@@ -6,7 +6,7 @@ export function HeroSection() {
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 via-blue-900/20 to-purple-900/30 p-8">
       <div className="flex flex-col md:flex-row items-center gap-8">
-        <div className="relative z-10 flex-1 font-thin">
+        <div className="relative z-10 flex-1">
           <div className="flex items-center space-x-2 mb-3">
             <div className="h-1 w-8 bg-blue-500 rounded-full"></div>
             <div className="text-blue-400 text-xs font-semibold uppercase tracking-wider">Welcome to the future</div>
@@ -17,7 +17,12 @@ export function HeroSection() {
             The Evolution of Development
           </h1>
 
-          
+          <p className="text-blue-100 text-lg max-w-3xl relative">
+            <span className="absolute -left-6 -top-3 text-5xl text-blue-500 opacity-20">"</span>
+            SAAAM.dev combines quantum-inspired algorithms with adaptive intelligence to create software that evolves
+            and improves with every interaction. Define your vision and let our system build it.
+            <span className="absolute -bottom-4 right-0 text-5xl text-blue-500 opacity-20">"</span>
+          </p>
 
           <div className="mt-8 flex flex-wrap gap-4">
             <Button

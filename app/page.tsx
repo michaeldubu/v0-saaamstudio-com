@@ -52,7 +52,6 @@ import "../styles/animations.css"
 import { ProjectGenerator } from "@/components/project-generator"
 import { PreviewPanel } from "@/components/preview-panel"
 import { GitHubIntegration } from "@/components/github-integration" // Import the new component
-import SaaamStudioPage from "./studio/page" // Add this import at the top
 
 export default function SAMDevWorkspace() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
@@ -670,13 +669,6 @@ export default function SAMDevWorkspace() {
                   <Share2 className="h-4 w-4 mr-2" />
                   Community
                 </TabsTrigger>
-                <TabsTrigger
-                  value="studio"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-teal-500 data-[state=active]:text-white"
-                >
-                  <Gamepad2 className="h-4 w-4 mr-2" />
-                  Studio
-                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -844,12 +836,6 @@ export default function SAMDevWorkspace() {
                 <p className="text-slate-300">This tab would contain community features, forums and shared projects</p>
               </div>
             </TabsContent>
-
-            <TabsContent value="studio" className="mt-0 h-[calc(100vh-180px)]">
-              {" "}
-              {/* Adjust height as needed */}
-              <SaaamStudioPage />
-            </TabsContent>
           </Tabs>
         </div>
 
@@ -945,7 +931,10 @@ export default function SAMDevWorkspace() {
                 </li>
               </ul>
               <div className="mt-6 flex items-center">
-                
+                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-900/20 border border-blue-500/30 rounded-md">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-xs text-blue-400">Quantum Core: Online</span>
+                </div>
               </div>
             </div>
           </div>

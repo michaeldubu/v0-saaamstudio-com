@@ -31,7 +31,7 @@ export function SAAAMLogo({ size = "medium", showVersion = true, showTagline = t
   return (
     <div className="flex items-center">
       <div className={`relative ${classes.container} overflow-hidden rounded-lg`}>
-        <Image src="/images/saaam-studio-logo-v2.png" alt="SAAAM STUDIO" fill className="object-cover" priority />
+        <Image src="/images/SAAAM-STUDIO-LOGO.png" alt="SAAAM STUDIO" fill className="object-cover" priority />
       </div>
       <div className="ml-3">
         <div className="font-bold text-white tracking-wide flex items-center">

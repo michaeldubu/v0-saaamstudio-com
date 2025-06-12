@@ -59,17 +59,17 @@ export function ProjectGenerator({ onGenerate }: ProjectGeneratorProps) {
   ]
 
   const languages = [
-    { id: "javascript", name: "JavaScript", icon: "JS" }, // No direct Lucide icon
-    { id: "typescript", name: "TypeScript", icon: "TS" }, // No direct Lucide icon
+    { id: "javascript", name: "JavaScript", icon: "JS" },
+    { id: "typescript", name: "TypeScript", icon: "TS" },
     { id: "python", name: "Python", icon: "🐍" },
-    { id: "go", name: "Go", icon: "Go" }, // No direct Lucide icon
+    { id: "go", name: "Go", icon: "Go" },
     { id: "java", name: "Java", icon: "☕" },
-    { id: "csharp", name: "C#", icon: ".NET" }, // No direct Lucide icon
+    { id: "csharp", name: "C#", icon: ".NET" },
     { id: "rust", name: "Rust", icon: "🦀" },
     { id: "php", name: "PHP", icon: "🐘" },
     { id: "ruby", name: "Ruby", icon: "💎" },
-    { id: "swift", name: "Swift", icon: " swift" }, // No direct Lucide icon
-    { id: "kotlin", name: "Kotlin", icon: "K" }, // No direct Lucide icon
+    { id: "swift", name: "Swift", icon: " swift" },
+    { id: "kotlin", name: "Kotlin", icon: "K" },
   ]
 
   const features = [
@@ -133,7 +133,7 @@ export function ProjectGenerator({ onGenerate }: ProjectGeneratorProps) {
               <Sparkles className="h-5 w-5 text-blue-400" />
             </div>
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-violet-300">
-              Prototype an app with AI
+              Want to create an APP / Game / Web-APP / Anything-else? My name is SAM, at your service!  
             </span>
           </CardTitle>
           <div className="flex items-center space-x-1">
@@ -142,7 +142,7 @@ export function ProjectGenerator({ onGenerate }: ProjectGeneratorProps) {
           </div>
         </div>
         <CardDescription className="text-slate-300 ml-10">
-          Describe your project in natural language and let our quantum-enhanced AI generate the perfect starting point
+          Describe your vision, I'll get to laying the code! I'll help you till its done! 
         </CardDescription>
       </CardHeader>
 

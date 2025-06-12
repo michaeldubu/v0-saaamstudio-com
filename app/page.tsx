@@ -945,10 +945,7 @@ export default function SAMDevWorkspace() {
                 </li>
               </ul>
               <div className="mt-6 flex items-center">
-                <div className="flex items-center space-x-1 px-2 py-1 bg-blue-900/20 border border-blue-500/30 rounded-md">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-xs text-blue-400">Quantum Core: Online</span>
-                </div>
+                
               </div>
             </div>
           </div>

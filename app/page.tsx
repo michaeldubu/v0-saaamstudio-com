@@ -14,7 +14,7 @@ import "../styles/animations.css"
 
 import { ProjectGenerator } from "@/components/project-generator"
 import { PreviewPanel } from "@/components/preview-panel"
-import { GithubIntegration } from "@/components/github-integration" // Import the new component
+import { GitHubIntegration } from "@/components/github-integration" // Import the new component
 import SaaamStudioPage from "./studio/page" // Add this import at the top
 
 export default function Home() {
@@ -58,7 +58,7 @@ export default function Home() {
             <SaaamStudioPage initialProjectData={generatedProject} />
           </TabsContent>
           <TabsContent value="github">
-            <GithubIntegration />
+            <GitHubIntegration />
           </TabsContent>
         </Tabs>
       </main>

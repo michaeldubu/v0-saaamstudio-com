@@ -1,19 +1,25 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FileExplorer } from "@/components/studio/file-explorer"
 import { CodeEditor } from "@/components/studio/code-editor"
 import { Terminal } from "@/components/studio/terminal"
 import { GamePreview } from "@/components/studio/game-preview"
 import { saaamEngine } from "@/lib/saaam-engine" // Import the mock engine
+import { Button } from "@/components/ui/button"
 
-interface FileItem {
+export interface FileItem {
   id: string
   name: string
   content: string
   type: "file" | "folder"
   folder?: string
+}
+
+interface LogEntry {
+  type: "info" | "success" | "error" | "system"
+  message: string
 }
 
 interface SaaamStudioPageProps {
@@ -24,23 +30,29 @@ interface SaaamStudioPageProps {
     language: string | null
     features: string[]
     timestamp: number
-    // Add a mock 'files' array for generated content
     generatedFiles?: { name: string; content: string; type: "file" }[]
   }
 }
 
 export default function SaaamStudioPage({ initialProjectData }: SaaamStudioPageProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [files, setFiles] = useState<FileItem[]>([])
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
   const [editorContent, setEditorContent] = useState<string>("")
-  const [consoleLogs, setConsoleLogs] = useState<{ type: "info" | "success" | "error" | "system"; message: string }[]>(
-    [],
-  )
+  const [consoleLogs, setConsoleLogs] = useState<LogEntry[]>([])
   const [activePanel, setActivePanel] = useState("editor")
   const [gameRunning, setGameRunning] = useState(false)
 
   const appendLog = useCallback((type: "info" | "success" | "error" | "system", message: string) => {
     setConsoleLogs((prev) => [...prev, { type, message }])
+  }, [])
+
+  // Effect to update gameRunning state from engine
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGameRunning(saaamEngine.getIsRunning())
+    }, 100) // Check every 100ms
+    return () => clearInterval(interval)
   }, [])
 
   // Initialize with default files or generated project files
@@ -58,7 +70,7 @@ export default function SaaamStudioPage({ initialProjectData }: SaaamStudioPageP
         setActiveFileId(loadedFiles[0].id)
         setEditorContent(loadedFiles[0].content)
       }
-      appendLog("system", `Project "${initialProjectData.description}" loaded into Studio.`)
+      appendLog("system", `Project "${initialProjectData.description}" loaded into SAAAM Studio.`)
       saaamEngine.loadProject(loadedFiles).then((result) => {
         setConsoleLogs((prev) => [...prev, ...result.logs])
       })
@@ -87,6 +99,19 @@ on gameStart {
   log("Game started!");
   let player = new Player();
   player.move("north");
+  draw_text("Hello SAAAM World!", 400, 300, "#FFFFFF");
+}
+
+// Example: Game drawing loop
+on gameDraw(ctx) {
+  // Clear the canvas (done by engine, but good practice to know)
+  // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  
+  // Draw a simple rectangle
+  ctx.fillStyle = "#FF0000";
+  ctx.fillRect(100, 100, 50, 50);
+  
+  draw_text("Drawing in SAAAM!", 400, 100, "#00FF00");
 }
 
 // Try changing 'log' to 'ERROR' to see a simulated error!
@@ -164,23 +189,84 @@ on gameStart {
       appendLog("error", "Please select a SAAAM script file to run.")
       return
     }
+    if (!canvasRef.current) {
+      appendLog("error", "Canvas not ready for rendering.")
+      return
+    }
 
     // Save current changes before running
     handleSaveFile()
 
-    setGameRunning(true)
     appendLog("system", `Attempting to run ${activeFile.name}...`)
-    const result = await saaamEngine.runScript(activeFile.content, activeFile.name)
+    const result = await saaamEngine.runScript(activeFile.content, activeFile.name, canvasRef.current)
     setConsoleLogs((prev) => [...prev, ...result.logs])
-    if (!result.success) {
-      setGameRunning(false) // Stop game if script failed
-    }
-    // In a real engine, gameRunning would be controlled by the engine's state
+    setGameRunning(saaamEngine.getIsRunning()) // Update state based on engine
   }, [activeFileId, files, handleSaveFile, appendLog])
+
+  const handleStopScript = useCallback(() => {
+    saaamEngine.stop()
+    setGameRunning(saaamEngine.getIsRunning()) // Update state based on engine
+    appendLog("system", "Script execution stopped by user.")
+  }, [appendLog])
 
   const handleEditorContentChange = useCallback((newContent: string) => {
     setEditorContent(newContent)
   }, [])
+
+  const handleImportProject = useCallback(() => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".json" // Or a custom project file extension like .saaamproj
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0]
+      if (file) {
+        try {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            try {
+              const importedData = JSON.parse(e.target?.result as string)
+              if (
+                Array.isArray(importedData) &&
+                importedData.every((item) => "id" in item && "name" in item && "content" in item && "type" in item)
+              ) {
+                setFiles(importedData)
+                if (importedData.length > 0) {
+                  setActiveFileId(importedData[0].id)
+                  setEditorContent(importedData[0].content)
+                }
+                appendLog("success", `Project imported successfully from ${file.name}.`)
+                saaamEngine.loadProject(importedData).then((result) => {
+                  setConsoleLogs((prev) => [...prev, ...result.logs])
+                })
+              } else {
+                appendLog("error", "Invalid project file format. Expected an array of file objects.")
+              }
+            } catch (parseError: any) {
+              appendLog("error", `Failed to parse project file: ${parseError.message}`)
+            }
+          }
+          reader.readAsText(file)
+        } catch (readError: any) {
+          appendLog("error", `Error reading file: ${readError.message}`)
+        }
+      }
+    }
+    input.click()
+  }, [appendLog])
+
+  const handleExportProject = useCallback(() => {
+    const projectData = JSON.stringify(files, null, 2)
+    const blob = new Blob([projectData], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "saaam_project.json" // Or .saaamproj
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    appendLog("success", "Project exported successfully as saaam_project.json.")
+  }, [files, appendLog])
 
   const activeFileName = activeFileId ? files.find((f) => f.id === activeFileId)?.name : null
 
@@ -197,6 +283,8 @@ on gameStart {
             onDeleteFile={handleDeleteFile}
             onSaveFile={handleSaveFile}
             onRunScript={handleRunScript}
+            onImportProject={handleImportProject}
+            onExportProject={handleExportProject}
           />
         </div>
 
@@ -217,12 +305,25 @@ on gameStart {
               />
             </TabsContent>
             <TabsContent value="preview" className="flex-1 mt-0">
-              <GamePreview gameRunning={gameRunning} />
+              <GamePreview canvasRef={canvasRef} gameRunning={gameRunning} />
             </TabsContent>
             <TabsContent value="console" className="flex-1 mt-0">
               <Terminal logs={consoleLogs} />
             </TabsContent>
           </Tabs>
+        </div>
+      </div>
+      <div className="p-4 border-t border-slate-800 bg-slate-900/70 flex items-center justify-between">
+        <div className="flex gap-2">
+          <Button onClick={handleRunScript} disabled={gameRunning}>
+            {gameRunning ? "Running..." : "Run Game"}
+          </Button>
+          <Button onClick={handleStopScript} disabled={!gameRunning} variant="outline">
+            Stop
+          </Button>
+        </div>
+        <div className="text-sm text-slate-400">
+          {activeFileName || "No file selected"} - {gameRunning ? "Game Running" : "Idle"}
         </div>
       </div>
     </div>

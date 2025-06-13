@@ -1,5 +1,4 @@
 import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
 
 interface LogoProps {
   size?: "small" | "medium" | "large"
@@ -10,18 +9,15 @@ interface LogoProps {
 export function SAAAMLogo({ size = "medium", showVersion = true, showTagline = true }: LogoProps) {
   const sizeClasses = {
     small: {
-      container: "w-10 h-10",
-      badge: "ml-1 text-[8px]",
+      container: "w-16 h-16", // Adjusted for new logo aspect ratio
       tagline: "text-[8px]",
     },
     medium: {
-      container: "w-14 h-14",
-      badge: "ml-2 text-xs",
+      container: "w-24 h-24", // Adjusted for new logo aspect ratio
       tagline: "text-xs",
     },
     large: {
-      container: "w-20 h-20",
-      badge: "ml-2 text-sm",
+      container: "w-32 h-32", // Adjusted for new logo aspect ratio
       tagline: "text-sm",
     },
   }
@@ -31,15 +27,19 @@ export function SAAAMLogo({ size = "medium", showVersion = true, showTagline = t
   return (
     <div className="flex items-center">
       <div className={`relative ${classes.container} overflow-hidden rounded-lg`}>
-        <Image src="/images/SAAAM-STUDIO-LOGO.png" alt="SAAAM STUDIO" fill className="object-cover" priority />
+        <Image
+          src="/images/saaam-studio-logo-full.png"
+          alt="SAAAM Studio Full Logo"
+          fill
+          className="object-cover"
+          priority
+        />
       </div>
       <div className="ml-3">
         <div className="font-bold text-white tracking-wide flex items-center">
-          SAAAMSTUDIO.COM
+          SAAAM Studio
           {showVersion && (
-            <Badge variant="outline" className={`${classes.badge} border-blue-400 text-blue-300`}>
-              Alpha
-            </Badge>
+            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full text-blue-300">Alpha</span>
           )}
         </div>
         {showTagline && (

@@ -19,7 +19,7 @@ export function HeroSection() {
 
           <p className="text-blue-100 text-lg max-w-3xl relative">
             <span className="absolute -left-6 -top-3 text-5xl text-blue-500 opacity-20">"</span>
-            SAAAM.dev combines quantum-inspired algorithms with adaptive intelligence to create software that evolves
+            SAAAM Studio combines quantum-inspired algorithms with adaptive intelligence to create software that evolves
             and improves with every interaction. Define your vision and let our system build it.
             <span className="absolute -bottom-4 right-0 text-5xl text-blue-500 opacity-20">"</span>
           </p>
@@ -47,7 +47,7 @@ export function HeroSection() {
 
         <div className="relative w-full max-w-md md:w-1/3">
           <div className="aspect-square relative rounded-xl overflow-hidden shadow-2xl shadow-blue-500/20">
-            <Image src="/images/SAAAM-STUDIO-LOGO.png" alt="SAAAM STUDIO" fill className="object-cover" priority />
+            <Image src="/images/saaam-studio-logo-full.png" alt="SAAAM Studio" fill className="object-cover" priority />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
           </div>
           <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-blue-500 rounded-full filter blur-3xl opacity-20 animate-pulse-subtle"></div>
